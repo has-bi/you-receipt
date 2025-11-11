@@ -1,0 +1,712 @@
+{% extends "base.html" %} {% block title %}Input Manual - Manajemen Stok
+Apotek{% endblock %} {% block content %}
+<div class="max-w-3xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8 fade-in">
+        <h1 class="text-4xl font-bold text-apple-gray-900 mb-2">
+            Input Manual
+        </h1>
+        <p class="text-lg text-apple-gray-600">
+            Catat stok dengan mengisi formulir di bawah ini
+        </p>
+    </div>
+
+    <!-- Success Message -->
+    <div
+        id="success-message"
+        class="hidden card-apple p-4 mb-6 border-l-4 border-green-500 fade-in"
+    >
+        <div class="flex items-center">
+            <svg
+                class="w-6 h-6 text-green-500 mr-3"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+            >
+                <path
+                    fill-rule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clip-rule="evenodd"
+                ></path>
+            </svg>
+            <div>
+                <p class="font-semibold text-green-800">Berhasil!</p>
+                <p class="text-sm text-green-700" id="success-text">
+                    Data stok berhasil disimpan
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Message -->
+    <div
+        id="error-message"
+        class="hidden card-apple p-4 mb-6 border-l-4 border-red-500 fade-in"
+    >
+        <div class="flex items-center">
+            <svg
+                class="w-6 h-6 text-red-500 mr-3"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+            >
+                <path
+                    fill-rule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clip-rule="evenodd"
+                ></path>
+            </svg>
+            <div>
+                <p class="font-semibold text-red-800">Terjadi Kesalahan</p>
+                <p class="text-sm text-red-700" id="error-text">
+                    Mohon coba lagi
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form -->
+    <form id="manual-form" class="card-apple p-8 slide-up">
+        <!-- Step 1: ASM Selection -->
+        <section class="mb-6 rounded-2xl border border-apple-gray-200 bg-white p-6 shadow-sm">
+            <div class="flex items-center gap-3 mb-4">
+                <span class="inline-flex w-8 h-8 items-center justify-center rounded-full bg-apple-gray-900 text-white font-semibold">1</span>
+                <div>
+                    <p class="text-lg font-semibold text-apple-gray-900">Pilih ASM & Area</p>
+                    <p class="text-sm text-apple-gray-500">Area terisi otomatis setelah Anda memilih ASM yang sesuai</p>
+                </div>
+            </div>
+            <div class="grid gap-6 md:grid-cols-2">
+                <div>
+                    <label for="asm-select" class="block text-sm font-semibold text-apple-gray-900 mb-2">
+                        ASM (Area Sales Manager) <span class="text-red-500">*</span>
+                    </label>
+                    <select id="asm-select" name="asm_name" required class="input-apple">
+                        <option value="">Pilih ASM</option>
+                        {% for asm in asms %}
+                        <option value="{{ asm.name }}" data-area="{{ asm.area_code }}" data-area-name="{{ asm.area_name }}">
+                            {{ asm.name }} ({{ asm.area_name }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <p class="text-xs text-apple-gray-500 mt-2">Gunakan kolom pencarian jika daftar ASM panjang</p>
+                </div>
+                <div>
+                    <label for="area" class="block text-sm font-semibold text-apple-gray-900 mb-2">
+                        Area <span class="text-xs text-apple-gray-500 font-normal">(terisi otomatis)</span>
+                    </label>
+                    <input
+                        type="text"
+                        id="area"
+                        name="area"
+                        readonly
+                        class="input-apple bg-apple-gray-50 text-apple-gray-600 cursor-not-allowed"
+                        placeholder="Pilih ASM terlebih dahulu"
+                    />
+                    <p class="text-xs text-apple-gray-500 mt-2">Kolom ini terkunci agar tidak terjadi salah area</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Step 2: Store Selection -->
+        <section class="mb-6 rounded-2xl border border-apple-gray-200 bg-white p-6 shadow-sm">
+            <div class="flex items-center gap-3 mb-4">
+                <span class="inline-flex w-8 h-8 items-center justify-center rounded-full bg-apple-gray-900 text-white font-semibold">2</span>
+                <div>
+                    <p class="text-lg font-semibold text-apple-gray-900">Pilih Toko</p>
+                    <p class="text-sm text-apple-gray-500">Daftar toko otomatis menyesuaikan area ASM</p>
+                </div>
+            </div>
+            <label for="store-select" class="block text-sm font-semibold text-apple-gray-900 mb-2">
+                Toko <span class="text-red-500">*</span>
+            </label>
+            <select id="store-select" name="store_id" required disabled class="input-apple">
+                <option value="">Pilih ASM terlebih dahulu</option>
+            </select>
+            <p class="text-xs text-apple-gray-500 mt-3">Tidak menemukan toko? Pastikan ASM yang dipilih sudah benar</p>
+        </section>
+
+        <!-- SKU Entries -->
+        <section class="mb-8 rounded-2xl border border-apple-gray-200 bg-white p-6 shadow-sm">
+            <div class="flex items-start gap-3 mb-4">
+                <span
+                    class="inline-flex w-8 h-8 flex-shrink-0 items-center justify-center rounded-full bg-apple-gray-900 text-white font-semibold"
+                >
+                    3
+                </span>
+                <div>
+                    <label class="block text-lg font-semibold text-apple-gray-900">
+                        Daftar Produk SKU <span class="text-red-500">*</span>
+                    </label>
+                    <p class="text-sm text-apple-gray-500">
+                        Semua SKU berbagi ASM, area, dan toko yang sama. Isi stok sesuai catatan tim toko.
+                    </p>
+                </div>
+            </div>
+            <div
+                class="mb-5 rounded-2xl border border-apple-gray-200 bg-apple-gray-50 p-4 text-sm text-apple-gray-600"
+            >
+                <div class="flex items-start gap-3">
+                    <svg
+                        class="w-5 h-5 text-apple-gray-500 mt-0.5"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                    </svg>
+                    <div>
+                        <p class="font-semibold text-apple-gray-800 mb-1">
+                            Cara mengisi stok:
+                        </p>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li>
+                                Jika memiliki data <strong>Stok Awal</strong> dan <strong>Stok Akhir</strong>, isi keduanya dan sistem akan otomatis menghitung Stok Terjual.
+                            </li>
+                            <li>
+                                Jika hanya mengetahui <strong>Stok Terjual</strong>, biarkan Stok Awal & Stok Akhir kosong.
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div id="sku-entries-container" class="space-y-6 mb-4"></div>
+            <div class="flex justify-end">
+                <button
+                    type="button"
+                    id="add-sku-btn"
+                    class="btn-apple text-sm bg-apple-gray-900 text-white hover:bg-apple-gray-800"
+                >
+                    + Tambah SKU
+                </button>
+            </div>
+        </section>
+
+        <!-- Buttons -->
+        <div class="flex gap-4">
+            <button
+                type="submit"
+                id="submit-btn"
+                class="flex-1 rounded-xl border border-green-400 bg-green-400 px-4 py-3 text-white font-semibold shadow hover:bg-green-500 transition"
+            >
+                Simpan Data
+            </button>
+            <button
+                type="button"
+                onclick="resetForm()"
+                class="rounded-xl border border-apple-gray-300 bg-white px-4 py-3 font-semibold text-apple-gray-700 shadow hover:bg-apple-gray-50 transition"
+            >
+                Reset
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %} {% block extra_scripts %}
+<script>
+    const skuOptionsHtml = `{% for product in products %}<option value="{{ product.sku_code }}">{{ product.product_name }} ({{ product.sku_code }})</option>{% endfor %}`;
+
+    let asmSelect, storeSelect;
+    let skuEntriesContainer;
+    const skuSelectInstances = new Map();
+    const selectedSkuMap = new Map();
+    let skuEntryCounter = 0;
+
+    document.addEventListener("DOMContentLoaded", function () {
+        skuEntriesContainer = document.getElementById("sku-entries-container");
+
+        asmSelect = new TomSelect("#asm-select", {
+            create: false,
+            placeholder: "Pilih ASM",
+            sortField: { field: "text", direction: "asc" },
+            onChange: handleASMChange,
+        });
+
+        storeSelect = new TomSelect("#store-select", {
+            create: false,
+            placeholder: "Pilih ASM terlebih dahulu",
+            sortField: { field: "text", direction: "asc" },
+        });
+        storeSelect.disable();
+
+        document
+            .getElementById("manual-form")
+            .addEventListener("submit", handleSubmit);
+        document
+            .getElementById("add-sku-btn")
+            .addEventListener("click", () => addSkuEntry());
+
+        initSkuEntries();
+    });
+
+    async function handleASMChange(value) {
+        if (!value) {
+            document.getElementById("area").value = "";
+            storeSelect.clear();
+            storeSelect.clearOptions();
+            storeSelect.disable();
+            return;
+        }
+
+        const option = asmSelect.options[value];
+        const areaCode = option.area;
+        const areaName = option["area-name"];
+
+        document.getElementById("area").value = `${areaCode} - ${areaName}`;
+        await loadStoresByArea(areaCode);
+    }
+
+    async function loadStoresByArea(areaCode) {
+        try {
+            const response = await fetch(`/api/stores?area=${areaCode}`);
+            const stores = await response.json();
+
+            storeSelect.enable();
+            storeSelect.clear();
+            storeSelect.clearOptions();
+
+            stores.forEach((store) => {
+                storeSelect.addOption({
+                    value: store.id,
+                    text: `${store.name} - ${store.kota}`,
+                });
+            });
+            storeSelect.refreshOptions(false);
+
+            if (stores.length === 0) {
+                storeSelect.disable();
+                showToast("Tidak ada toko di area ini", "warning");
+            }
+        } catch (error) {
+            console.error("Error loading stores:", error);
+            storeSelect.disable();
+            showToast("Gagal memuat data toko", "error");
+        }
+    }
+
+    function initSkuEntries() {
+        skuEntriesContainer.innerHTML = "";
+        skuSelectInstances.forEach((instance) => instance.destroy());
+        skuSelectInstances.clear();
+        selectedSkuMap.clear();
+        skuEntryCounter = 0;
+        addSkuEntry();
+    }
+
+    function addSkuEntry(prefill = {}) {
+        const entryId = `sku-entry-${Date.now()}-${skuEntryCounter++}`;
+        const entry = document.createElement("div");
+        entry.className = "border border-apple-gray-200 rounded-2xl p-5 bg-white shadow-sm";
+        entry.dataset.entryId = entryId;
+        entry.innerHTML = `
+            <div class="flex items-start justify-between mb-4">
+                <div>
+                    <p class="text-sm font-semibold text-apple-gray-900">
+                        SKU <span class="sku-entry-index text-apple-gray-500"></span>
+                    </p>
+                    <p class="text-xs text-apple-gray-500">
+                        Isi produk dan informasi stok
+                    </p>
+                </div>
+                <button type="button" class="remove-sku-entry text-sm font-semibold text-red-500">
+                    Hapus
+                </button>
+            </div>
+            <div class="mb-4">
+                <label class="block text-xs font-medium text-apple-gray-700 mb-2">
+                    Produk (SKU) <span class="text-red-500">*</span>
+                </label>
+                <select class="sku-select input-apple" data-field="sku_code" required>
+                    <option value="">Pilih produk</option>
+                    ${skuOptionsHtml}
+                </select>
+            </div>
+            <div class="grid md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-medium text-apple-gray-700 mb-2">
+                        Stok Awal <span class="text-apple-gray-500">(opsional)</span>
+                    </label>
+                    <input
+                        type="number"
+                        min="0"
+                        class="input-apple text-center"
+                        data-field="stock_awal"
+                        placeholder="0"
+                        value="${prefill.stock_awal ?? ''}"
+                    />
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-apple-gray-700 mb-2">
+                        Stok Akhir <span class="text-apple-gray-500">(opsional)</span>
+                    </label>
+                    <input
+                        type="number"
+                        min="0"
+                        class="input-apple text-center"
+                        data-field="stock_akhir"
+                        placeholder="0"
+                        value="${prefill.stock_akhir ?? ''}"
+                    />
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-apple-gray-700 mb-2">
+                        Stok Terjual <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                        type="number"
+                        min="0"
+                        required
+                        class="input-apple text-center font-semibold"
+                        data-field="stock_terjual"
+                        placeholder="0"
+                        value="${prefill.stock_terjual ?? ''}"
+                    />
+                    <p class="text-[11px] text-apple-gray-500 mt-1">
+                        Otomatis mengikuti (Stok Awal - Stok Akhir) saat keduanya diisi
+                    </p>
+                </div>
+            </div>
+        `;
+
+        skuEntriesContainer.appendChild(entry);
+
+        const selectElement = entry.querySelector("select[data-field='sku_code']");
+        const selectInstance = new TomSelect(selectElement, {
+            create: false,
+            placeholder: "Pilih produk",
+            sortField: { field: "text", direction: "asc" },
+            onChange: (value) => handleSkuSelectionChange(entryId, value),
+        });
+        skuSelectInstances.set(entryId, selectInstance);
+        selectedSkuMap.set(entryId, "");
+        if (prefill.sku_code) {
+            selectInstance.setValue(prefill.sku_code, true);
+            selectedSkuMap.set(entryId, prefill.sku_code);
+        }
+
+        entry
+            .querySelector(".remove-sku-entry")
+            .addEventListener("click", () => removeSkuEntry(entryId));
+
+        attachStockAutoCalculation(entry);
+        updateSkuEntryTitles();
+    }
+
+    function removeSkuEntry(entryId) {
+        if (skuEntriesContainer.children.length === 1) {
+            showToast("Minimal satu SKU diperlukan", "warning");
+            return;
+        }
+
+        const entry = skuEntriesContainer.querySelector(
+            `[data-entry-id="${entryId}"]`
+        );
+        if (!entry) {
+            return;
+        }
+
+        const instance = skuSelectInstances.get(entryId);
+        if (instance) {
+            instance.destroy();
+            skuSelectInstances.delete(entryId);
+        }
+        selectedSkuMap.delete(entryId);
+
+        entry.remove();
+        updateSkuEntryTitles();
+    }
+
+    function updateSkuEntryTitles() {
+        const entries = skuEntriesContainer.querySelectorAll("[data-entry-id]");
+        entries.forEach((entry, index) => {
+            const label = entry.querySelector(".sku-entry-index");
+            if (label) {
+                label.textContent = `#${index + 1}`;
+            }
+
+            const removeBtn = entry.querySelector(".remove-sku-entry");
+            if (removeBtn) {
+                const disabled = entries.length === 1;
+                removeBtn.disabled = disabled;
+                removeBtn.classList.toggle("opacity-40", disabled);
+                removeBtn.classList.toggle("cursor-not-allowed", disabled);
+            }
+        });
+    }
+
+    function collectSkuEntries() {
+        const entries = [];
+        const entryElements = skuEntriesContainer.querySelectorAll("[data-entry-id]");
+        const seenSkus = new Set();
+
+        for (let index = 0; index < entryElements.length; index++) {
+            const entryEl = entryElements[index];
+            const entryId = entryEl.dataset.entryId;
+            const selectInstance = skuSelectInstances.get(entryId);
+            const skuCode = selectInstance
+                ? selectInstance.getValue()
+                : entryEl.querySelector("[data-field='sku_code']").value;
+
+            if (!skuCode) {
+                return { error: `Pilih produk untuk SKU #${index + 1}` };
+            }
+
+            if (seenSkus.has(skuCode)) {
+                return { error: `SKU ${skuCode} sudah dipilih. Gunakan SKU berbeda.` };
+            }
+            seenSkus.add(skuCode);
+
+            try {
+                const rawStockAwal = entryEl
+                    .querySelector("[data-field='stock_awal']")
+                    .value.trim();
+                const rawStockAkhir = entryEl
+                    .querySelector("[data-field='stock_akhir']")
+                    .value.trim();
+
+                const awalProvided = rawStockAwal !== "";
+                const akhirProvided = rawStockAkhir !== "";
+
+                if (awalProvided !== akhirProvided) {
+                    return {
+                        error: `Isi stok awal dan stok akhir secara bersamaan untuk SKU #${index + 1}`,
+                    };
+                }
+
+                const stockAwal = awalProvided
+                    ? parseNonNegativeNumber(
+                          rawStockAwal,
+                          `Stok awal SKU #${index + 1}`
+                      )
+                    : null;
+                const stockAkhir = akhirProvided
+                    ? parseNonNegativeNumber(
+                          rawStockAkhir,
+                          `Stok akhir SKU #${index + 1}`
+                      )
+                    : null;
+
+                const stockTerjualInput = entryEl.querySelector(
+                    "[data-field='stock_terjual']"
+                );
+                const stockTerjualRaw = stockTerjualInput.value.trim();
+                let stockTerjual =
+                    stockTerjualRaw === ""
+                        ? null
+                        : parseRequiredNumber(
+                              stockTerjualRaw,
+                              `Stok terjual SKU #${index + 1}`
+                          );
+
+                if (stockAwal !== null && stockAkhir !== null) {
+                    const diff = stockAwal - stockAkhir;
+                    if (diff < 0) {
+                        return {
+                            error: `Stok akhir harus lebih kecil atau sama dengan stok awal untuk SKU #${index + 1}`,
+                        };
+                    }
+                    stockTerjual = diff;
+                    stockTerjualInput.value = diff;
+                } else if (stockTerjual === null) {
+                    return {
+                        error: `Isi stok terjual untuk SKU #${index + 1}`,
+                    };
+                }
+
+                entries.push({
+                    sku_code: skuCode,
+                    stock_awal: stockAwal,
+                    stock_akhir: stockAkhir,
+                    stock_terjual: stockTerjual,
+                });
+            } catch (error) {
+                return { error: error.message };
+            }
+        }
+
+        return { entries };
+    }
+
+    function parseNonNegativeNumber(value, label) {
+        const parsed = Number(value);
+        if (Number.isNaN(parsed) || parsed < 0) {
+            throw new Error(`${label} harus berupa angka ≥ 0`);
+        }
+        return parsed;
+    }
+
+    function parseRequiredNumber(value, label) {
+        if (value === "") {
+            throw new Error(`${label} wajib diisi`);
+        }
+        const parsed = Number(value);
+        if (Number.isNaN(parsed) || parsed < 0) {
+            throw new Error(`${label} harus berupa angka ≥ 0`);
+        }
+        return parsed;
+    }
+
+    async function handleSubmit(e) {
+        e.preventDefault();
+
+        const submitBtn = document.getElementById("submit-btn");
+        showLoading(submitBtn);
+
+        document.getElementById("success-message").classList.add("hidden");
+        document.getElementById("error-message").classList.add("hidden");
+
+        const asmValue = asmSelect.getValue();
+        const storeValue = storeSelect.getValue();
+
+        if (!asmValue) {
+            hideLoading(submitBtn);
+            showToast("Pilih ASM terlebih dahulu", "warning");
+            return;
+        }
+
+        if (!storeValue) {
+            hideLoading(submitBtn);
+            showToast("Pilih toko terlebih dahulu", "warning");
+            return;
+        }
+
+        const { entries, error } = collectSkuEntries();
+        if (error) {
+            hideLoading(submitBtn);
+            showToast(error, "error");
+            return;
+        }
+
+        const payload = {
+            asm_name: asmValue,
+            store_id: storeValue,
+            entries,
+        };
+
+        try {
+            const response = await fetch("/api/manual-submit", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                document.getElementById("success-text").textContent =
+                    result.message;
+                document
+                    .getElementById("success-message")
+                    .classList.remove("hidden");
+                resetForm();
+                window.scrollTo({ top: 0, behavior: "smooth" });
+                showToast(result.message || "Data berhasil disimpan!", "success");
+            } else {
+                const detail = result.detail || "Terjadi kesalahan";
+                document.getElementById("error-text").textContent = detail;
+                document
+                    .getElementById("error-message")
+                    .classList.remove("hidden");
+                showToast(detail, "error");
+            }
+        } catch (error) {
+            console.error("Error:", error);
+            const message = "Terjadi kesalahan jaringan";
+            document.getElementById("error-text").textContent = message;
+            document.getElementById("error-message").classList.remove("hidden");
+            showToast(message, "error");
+        } finally {
+            hideLoading(submitBtn);
+        }
+    }
+
+    function handleSkuSelectionChange(entryId, newValue) {
+        const previousValue = selectedSkuMap.get(entryId) || "";
+
+        if (newValue && isSkuDuplicate(entryId, newValue)) {
+            showToast("SKU sudah dipilih, pilih SKU lain", "warning");
+            const instance = skuSelectInstances.get(entryId);
+            if (instance) {
+                if (previousValue) {
+                    instance.setValue(previousValue, true);
+                } else {
+                    instance.clear();
+                }
+            }
+            return;
+        }
+
+        selectedSkuMap.set(entryId, newValue || "");
+    }
+
+    function isSkuDuplicate(currentEntryId, value) {
+        for (const [entryId, selectedSku] of selectedSkuMap.entries()) {
+            if (entryId !== currentEntryId && selectedSku && selectedSku === value) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function attachStockAutoCalculation(entry) {
+        const stockAwalInput = entry.querySelector("[data-field='stock_awal']");
+        const stockAkhirInput = entry.querySelector("[data-field='stock_akhir']");
+        const stockTerjualInput = entry.querySelector("[data-field='stock_terjual']");
+
+        if (!stockAwalInput || !stockAkhirInput || !stockTerjualInput) {
+            return;
+        }
+
+        const recalc = () => {
+            const awalValue = stockAwalInput.value.trim();
+            const akhirValue = stockAkhirInput.value.trim();
+            if (awalValue === "" || akhirValue === "") {
+                stockTerjualInput.value = "";
+                return;
+            }
+
+            const awal = Number(awalValue);
+            const akhir = Number(akhirValue);
+
+            if (Number.isNaN(awal) || awal < 0 || Number.isNaN(akhir) || akhir < 0) {
+                return;
+            }
+
+            const diff = awal - akhir;
+            if (diff < 0) {
+                showToast(
+                    `Stok akhir tidak boleh lebih besar dari stok awal (SKU #${getSkuIndex(entry)})`,
+                    "warning"
+                );
+                stockTerjualInput.value = "";
+                return;
+            }
+
+            stockTerjualInput.value = diff;
+        };
+
+        stockAwalInput.addEventListener("input", recalc);
+        stockAkhirInput.addEventListener("input", recalc);
+    }
+
+    function getSkuIndex(entryElement) {
+        const entries = Array.from(
+            skuEntriesContainer.querySelectorAll("[data-entry-id]")
+        );
+        const index = entries.indexOf(entryElement);
+        return index >= 0 ? index + 1 : "?";
+    }
+
+    function resetForm() {
+        document.getElementById("manual-form").reset();
+        document.getElementById("area").value = "";
+        asmSelect.clear();
+        storeSelect.clear();
+        storeSelect.clearOptions();
+        storeSelect.disable();
+        initSkuEntries();
+    }
+</script>
+{% endblock %}

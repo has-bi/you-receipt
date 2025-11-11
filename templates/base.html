@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="id">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>{% block title %}Manajemen Stok Apotek{% endblock %}</title>
+
+        <!-- Tailwind CSS -->
+        <script src="https://cdn.tailwindcss.com"></script>
+
+        <!-- HTMX -->
+        <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+        <!-- Tom-Select -->
+        <link
+            href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css"
+            rel="stylesheet"
+        />
+        <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+
+        <!-- Custom Tailwind Config -->
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        colors: {
+                            "apple-blue": "#007AFF",
+                            "apple-gray": {
+                                50: "#F9FAFB",
+                                100: "#F3F4F6",
+                                200: "#E5E7EB",
+                                300: "#D1D5DB",
+                                400: "#9CA3AF",
+                                500: "#6B7280",
+                                600: "#4B5563",
+                                700: "#374151",
+                                800: "#1F2937",
+                                900: "#111827",
+                            },
+                        },
+                        fontFamily: {
+                            sf: [
+                                "-apple-system",
+                                "BlinkMacSystemFont",
+                                "SF Pro Display",
+                                "Segoe UI",
+                                "Roboto",
+                                "sans-serif",
+                            ],
+                        },
+                        boxShadow: {
+                            apple: "0 2px 8px rgba(0, 0, 0, 0.08)",
+                            "apple-lg": "0 4px 16px rgba(0, 0, 0, 0.12)",
+                            "apple-xl": "0 8px 32px rgba(0, 0, 0, 0.16)",
+                        },
+                        borderRadius: {
+                            apple: "12px",
+                            "apple-lg": "16px",
+                        },
+                    },
+                },
+            };
+        </script>
+
+        <style>
+            * {
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "SF Pro Display",
+                    "Segoe UI", Roboto, sans-serif;
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+            }
+
+            body {
+                background: #f9fafb;
+            }
+
+            /* Apple-style button */
+            .btn-apple {
+                @apply px-6 py-3 rounded-apple font-medium transition-all duration-200 ease-out;
+                @apply shadow-apple hover:shadow-apple-lg active:scale-95;
+            }
+
+            .btn-primary {
+                @apply bg-apple-blue text-white hover:bg-blue-600;
+            }
+
+            .btn-secondary {
+                @apply bg-white text-apple-gray-700 border border-apple-gray-300 hover:bg-apple-gray-50;
+            }
+
+            /* Apple-style card */
+            .card-apple {
+                @apply bg-white rounded-apple-lg shadow-apple;
+            }
+
+            /* Apple-style input */
+            .input-apple {
+                @apply w-full px-4 py-3 rounded-apple border border-apple-gray-300;
+                @apply focus:ring-2 focus:ring-apple-blue focus:border-transparent;
+                @apply transition-all duration-200;
+            }
+
+            /* Tom-Select Apple Style */
+            .ts-wrapper .ts-control {
+                @apply rounded-apple border-apple-gray-300 py-2 px-3;
+            }
+
+            .ts-wrapper.focus .ts-control {
+                @apply ring-2 ring-apple-blue border-transparent;
+            }
+
+            /* Smooth animations */
+            .fade-in {
+                animation: fadeIn 0.3s ease-in;
+            }
+
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(-10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            .slide-up {
+                animation: slideUp 0.3s ease-out;
+            }
+
+            @keyframes slideUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+        </style>
+
+        {% block extra_head %}{% endblock %}
+    </head>
+    <body class="bg-apple-gray-50 min-h-screen">
+        <!-- Navigation - Apple Style -->
+        <nav
+            class="bg-white/80 backdrop-blur-lg border-b border-apple-gray-200 sticky top-0 z-50"
+        >
+            <div class="max-w-5xl mx-auto px-6">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex items-center space-x-8">
+                        <a
+                            href="/"
+                            class="text-2xl font-semibold text-apple-gray-900"
+                        >
+                            Stok Apotek
+                        </a>
+                        <div class="hidden md:flex space-x-6">
+                            <a
+                                href="/"
+                                class="text-apple-gray-600 hover:text-apple-gray-900 transition-colors"
+                            >
+                                Beranda
+                            </a>
+                            <a
+                                href="/manual"
+                                class="text-apple-gray-600 hover:text-apple-gray-900 transition-colors"
+                            >
+                                Input Manual
+                            </a>
+                            <a
+                                href="/ocr"
+                                class="text-apple-gray-600 hover:text-apple-gray-900 transition-colors"
+                            >
+                                Scan Struk
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="max-w-5xl mx-auto px-6 py-12">
+            {% block content %}{% endblock %}
+        </main>
+
+        <!-- Toast Container -->
+        <div
+            id="toast-container"
+            class="fixed top-20 right-6 z-50 space-y-3"
+        ></div>
+
+        <!-- Global Scripts -->
+        <script>
+            // Apple-style toast notification
+            function showToast(message, type = "success") {
+                const container = document.getElementById("toast-container");
+                const toast = document.createElement("div");
+
+                const colors = {
+                    success: "bg-green-500",
+                    error: "bg-red-500",
+                    warning: "bg-yellow-500",
+                    info: "bg-apple-blue",
+                };
+
+                toast.className = `${colors[type]} text-white px-5 py-3 rounded-apple shadow-apple-lg transform transition-all duration-300 ease-out fade-in max-w-sm`;
+                toast.innerHTML = `
+                <div class="flex items-center space-x-3">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        ${
+                            type === "success"
+                                ? '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>'
+                                : type === "error"
+                                  ? '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>'
+                                  : '<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>'
+                        }
+                    </svg>
+                    <span class="font-medium">${message}</span>
+                </div>
+            `;
+
+                container.appendChild(toast);
+
+                setTimeout(() => {
+                    toast.style.opacity = "0";
+                    toast.style.transform = "translateX(100%)";
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            }
+
+            // Loading state
+            function showLoading(button) {
+                const originalContent = button.innerHTML;
+                button.dataset.originalContent = originalContent;
+                button.innerHTML = `
+                <div class="flex items-center justify-center space-x-2">
+                    <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Memproses...</span>
+                </div>
+            `;
+                button.disabled = true;
+            }
+
+            function hideLoading(button) {
+                button.innerHTML = button.dataset.originalContent;
+                button.disabled = false;
+            }
+        </script>
+
+        {% block extra_scripts %}{% endblock %}
+    </body>
+</html>

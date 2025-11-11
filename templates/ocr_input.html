@@ -1,0 +1,908 @@
+{% extends "base.html" %} {% block title %}Scan Struk - Manajemen Stok Apotek{%
+endblock %} {% block content %}
+<div class="max-w-6xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8 fade-in">
+        <h1 class="text-4xl font-bold text-apple-gray-900 mb-2">Scan Struk</h1>
+        <p class="text-lg text-apple-gray-600">
+            Upload foto struk, AI akan ekstrak data secara otomatis
+        </p>
+    </div>
+
+    <!-- Upload Section -->
+    <div id="upload-section" class="card-apple p-8 mb-8 slide-up">
+        <form id="ocr-form" class="space-y-8">
+            <!-- Step 1: ASM & Area -->
+            <section class="rounded-2xl border border-apple-gray-200 bg-white p-6 shadow-sm">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="inline-flex w-8 h-8 items-center justify-center rounded-full bg-apple-gray-900 text-white font-semibold">1</span>
+                    <div>
+                        <p class="text-lg font-semibold text-apple-gray-900">Pilih ASM & Area</p>
+                        <p class="text-sm text-apple-gray-500">Area terisi otomatis setelah Anda memilih ASM</p>
+                    </div>
+                </div>
+                <div class="grid gap-6 md:grid-cols-2">
+                    <div>
+                        <label for="asm-select" class="block text-sm font-semibold text-apple-gray-900 mb-2">
+                            ASM (Area Sales Manager) <span class="text-red-500">*</span>
+                        </label>
+                        <select id="asm-select" name="asm_name" required class="input-apple">
+                            <option value="">Pilih ASM</option>
+                            {% for asm in asms %}
+                            <option value="{{ asm.name }}" data-area="{{ asm.area_code }}" data-area-name="{{ asm.area_name }}">
+                                {{ asm.name }} ({{ asm.area_name }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <p class="text-xs text-apple-gray-500 mt-2">Gunakan kolom pencarian jika daftar ASM panjang</p>
+                    </div>
+                    <div>
+                        <label for="area" class="block text-sm font-semibold text-apple-gray-900 mb-2">
+                            Area <span class="text-xs text-apple-gray-500">(terisi otomatis)</span>
+                        </label>
+                        <input
+                            type="text"
+                            id="area"
+                            readonly
+                            class="input-apple bg-apple-gray-50 text-apple-gray-600 cursor-not-allowed"
+                            placeholder="Pilih ASM terlebih dahulu"
+                        />
+                        <p class="text-xs text-apple-gray-500 mt-2">Kolom ini terkunci agar tidak terjadi salah area</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 2: Info Toko -->
+            <section class="rounded-2xl border border-apple-gray-200 bg-white p-6 shadow-sm">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="inline-flex w-8 h-8 items-center justify-center rounded-full bg-apple-gray-900 text-white font-semibold">2</span>
+                    <div>
+                        <p class="text-lg font-semibold text-apple-gray-900">Isi Informasi Toko</p>
+                        <p class="text-sm text-apple-gray-500">Boleh mengetik manual jika toko belum ada di master</p>
+                    </div>
+                </div>
+                <label for="store_name" class="block text-sm font-semibold text-apple-gray-900 mb-2">
+                    Nama Toko <span class="text-red-500">*</span>
+                </label>
+                <input
+                    type="text"
+                    id="store_name"
+                    name="store_name"
+                    required
+                    class="input-apple"
+                    placeholder="Contoh: Apotek Sehat Jaya"
+                />
+                <p class="text-xs text-apple-gray-500 mt-2">Cantumkan nama toko sesuai foto struk agar mudah ditelusuri</p>
+            </section>
+
+            <!-- Step 3: Upload Struk -->
+            <section class="rounded-2xl border border-apple-gray-200 bg-white p-6 shadow-sm">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="inline-flex w-8 h-8 items-center justify-center rounded-full bg-apple-gray-900 text-white font-semibold">3</span>
+                    <div>
+                        <p class="text-lg font-semibold text-apple-gray-900">Upload Foto / PDF Struk</p>
+                        <p class="text-sm text-apple-gray-500">Maksimal 10MB per file. Format: JPG, PNG, atau PDF.</p>
+                    </div>
+                </div>
+                <div class="mb-4 rounded-2xl border-2 border-dashed border-apple-gray-300 bg-apple-gray-50 p-8 text-center hover:border-apple-gray-500 transition">
+                    <input type="file" id="files" name="files" multiple accept="image/png,image/jpeg,application/pdf" required class="hidden" />
+                    <label for="files" class="cursor-pointer block">
+                        <svg class="w-16 h-16 mx-auto text-apple-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        <p class="text-apple-gray-800 font-semibold mb-1">Klik untuk memilih file</p>
+                        <p class="text-sm text-apple-gray-500">atau seret & letakkan file ke area ini</p>
+                        <p class="text-xs text-apple-gray-400 mt-2">Format didukung: JPG, PNG, PDF • Maks 10MB per file</p>
+                    </label>
+                </div>
+                <div id="file-list" class="space-y-2"></div>
+            </section>
+
+            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <p class="text-sm text-apple-gray-500">
+                    Pastikan cahaya foto cukup dan teks pada struk terlihat jelas untuk hasil terbaik
+                </p>
+                <button type="submit" id="process-btn" class="rounded-xl border border-apple-gray-900 bg-apple-gray-900 px-6 py-3 text-white font-semibold shadow hover:bg-apple-gray-800 transition flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    Proses dengan AI
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Processing Status -->
+    <div id="processing-status" class="hidden card-apple p-8 mb-8 fade-in">
+        <div class="flex items-center justify-center">
+            <svg
+                class="animate-spin h-8 w-8 text-apple-blue mr-4"
+                viewBox="0 0 24 24"
+            >
+                <circle
+                    class="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="4"
+                    fill="none"
+                ></circle>
+                <path
+                    class="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+            </svg>
+            <div>
+                <h3 class="font-semibold text-apple-gray-900 mb-1">
+                    Sedang memproses gambar...
+                </h3>
+                <p class="text-sm text-apple-gray-600">
+                    Ini mungkin memakan waktu beberapa menit tergantung jumlah
+                    gambar
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview Section -->
+    <div id="preview-section" class="hidden">
+        <section class="mb-6 rounded-2xl border border-apple-gray-200 bg-white p-6 shadow-sm">
+            <h2 class="text-2xl font-bold text-apple-gray-900 mb-2">
+                Review & Edit Data
+            </h2>
+            <p class="text-apple-gray-600 text-sm">
+                Periksa data hasil ekstraksi AI. Sesuaikan bila diperlukan sebelum disimpan.
+            </p>
+        </section>
+
+        <!-- Document Tabs -->
+        <div id="document-tabs" class="hidden mb-6 flex flex-wrap gap-3"></div>
+
+        <!-- Active Document Detail -->
+        <div id="document-detail" class="hidden mb-10"></div>
+
+        <!-- Legacy Preview Items (fallback) -->
+        <div id="legacy-preview-container" class="hidden space-y-6 mb-8"></div>
+
+        <!-- Submit Bar -->
+        <div
+            class="sticky bottom-6 rounded-2xl border border-apple-gray-200 bg-white p-5 shadow-apple-xl"
+        >
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="font-semibold text-apple-gray-900">
+                        Siap menyimpan?
+                    </p>
+                    <p class="text-sm text-apple-gray-600" id="submit-count">
+                        0 data siap disimpan
+                    </p>
+                </div>
+                <button
+                    id="submit-all-btn"
+                    class="rounded-xl border border-apple-gray-900 bg-apple-gray-900 px-8 py-3 text-white font-semibold shadow hover:bg-apple-gray-800 transition"
+                >
+                    Simpan Semua Data
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} {% block extra_scripts %}
+<script>
+    let asmSelect;
+    let processedResults = [];
+    let processedDocuments = [];
+    let activeDocIndex = 0;
+    let selectedASM = null;
+    let selectedStore = null;
+    let selectedArea = null;
+
+    document.addEventListener("DOMContentLoaded", function () {
+        asmSelect = new TomSelect("#asm-select", {
+            create: false,
+            onChange: handleASMChange,
+        });
+
+        document
+            .getElementById("files")
+            .addEventListener("change", handleFileSelection);
+        document
+            .getElementById("ocr-form")
+            .addEventListener("submit", handleOCRSubmit);
+        document
+            .getElementById("submit-all-btn")
+            .addEventListener("click", handleSubmitAll);
+    });
+
+    function handleASMChange(value) {
+        if (!value) {
+            document.getElementById("area").value = "";
+            selectedASM = null;
+            selectedArea = null;
+            return;
+        }
+
+        const option = asmSelect.options[value];
+        const areaCode = option.area;
+        const areaName = option["area-name"];
+
+        document.getElementById("area").value = `${areaCode} - ${areaName}`;
+        selectedASM = value;
+        selectedArea = areaCode;
+    }
+
+    function handleFileSelection(e) {
+        const files = e.target.files;
+        const fileList = document.getElementById("file-list");
+        fileList.innerHTML = "";
+
+        if (files.length === 0) return;
+
+        Array.from(files).forEach((file, index) => {
+            const fileItem = document.createElement("div");
+            fileItem.className =
+                "flex items-center justify-between bg-white p-3 rounded-apple border border-apple-gray-200";
+            fileItem.innerHTML = `
+                <div class="flex items-center space-x-3">
+                    <svg class="w-5 h-5 text-apple-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    <span class="text-sm font-medium text-apple-gray-700">${index + 1}. ${file.name}</span>
+                </div>
+                <span class="text-xs text-apple-gray-500">${(file.size / 1024 / 1024).toFixed(2)} MB</span>
+            `;
+            fileList.appendChild(fileItem);
+        });
+    }
+
+    async function handleOCRSubmit(e) {
+        e.preventDefault();
+
+        const formData = new FormData(e.target);
+        selectedStore = formData.get("store_name");
+
+        if (!selectedASM || !selectedStore) {
+            showToast("Mohon lengkapi semua field yang wajib diisi", "error");
+            return;
+        }
+
+        const files = document.getElementById("files").files;
+        if (files.length === 0) {
+            showToast("Mohon pilih minimal satu gambar", "error");
+            return;
+        }
+
+        document.getElementById("upload-section").classList.add("hidden");
+        document.getElementById("processing-status").classList.remove("hidden");
+
+        try {
+            const response = await fetch("/api/ocr-process", {
+                method: "POST",
+                body: formData,
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                processedResults = result.results || [];
+                const documents = (result.documents || []).map((doc, idx) =>
+                    normalizeDocument(doc, idx),
+                );
+                activeDocIndex = 0;
+                processedDocuments = documents;
+                displayPreview(processedResults, documents);
+
+                document
+                    .getElementById("processing-status")
+                    .classList.add("hidden");
+                document
+                    .getElementById("preview-section")
+                    .classList.remove("hidden");
+
+                showToast(
+                    `Berhasil memproses ${result.results.length} gambar`,
+                    "success",
+                );
+            } else {
+                throw new Error(result.detail || "Proses gagal");
+            }
+        } catch (error) {
+            console.error("Error:", error);
+            showToast("Gagal memproses gambar: " + error.message, "error");
+
+            document
+                .getElementById("processing-status")
+                .classList.add("hidden");
+            document
+                .getElementById("upload-section")
+                .classList.remove("hidden");
+        }
+    }
+
+    function displayPreview(results = [], documents = []) {
+        processedResults = results;
+        processedDocuments = documents;
+
+        const tabs = document.getElementById("document-tabs");
+        const detail = document.getElementById("document-detail");
+        const legacyContainer = document.getElementById(
+            "legacy-preview-container",
+        );
+
+        if (processedDocuments.length > 0) {
+            tabs.classList.remove("hidden");
+            detail.classList.remove("hidden");
+            legacyContainer.classList.add("hidden");
+            renderDocumentTabs();
+            renderActiveDocument();
+        } else {
+            tabs.classList.add("hidden");
+            detail.classList.add("hidden");
+            legacyContainer.classList.remove("hidden");
+            renderLegacyPreview();
+        }
+
+        updateSubmitCount();
+    }
+
+    function normalizeDocument(doc, idx) {
+        return {
+            id: doc.id,
+            filename: doc.filename || `Dokumen ${idx + 1}`,
+            image_url: doc.image_url || null,
+            document_url: doc.document_url || doc.image_url || null,
+            mime_type: doc.mime_type || "",
+            matched_products: doc.matched_products || [],
+            unmatched_products: (doc.unmatched_products || []).map((item) => ({
+                ...item,
+                selected_sku: item.selected_sku || "",
+            })),
+            errors: doc.errors || [],
+        };
+    }
+
+    function renderDocumentTabs() {
+        const tabs = document.getElementById("document-tabs");
+        tabs.innerHTML = processedDocuments
+            .map((doc, idx) => {
+                const matchedCount = doc.matched_products.length;
+                const reviewCount = doc.unmatched_products.length;
+                const hasErrors = doc.errors.length > 0;
+                const isActive = idx === activeDocIndex;
+
+                const statusLabel = hasErrors
+                    ? "Error"
+                    : reviewCount > 0
+                    ? `${reviewCount} Review`
+                    : "Siap";
+                const statusClass = hasErrors
+                    ? "bg-red-100 text-red-700"
+                    : reviewCount > 0
+                    ? "bg-yellow-100 text-yellow-700"
+                    : "bg-green-100 text-green-700";
+
+                return `
+                    <button type="button"
+                        class="px-5 py-3 rounded-2xl border ${
+                            isActive
+                                ? "bg-apple-gray-900 text-white border-apple-gray-900 shadow-apple-lg"
+                                : "bg-white text-apple-gray-700 border-apple-gray-200 hover:bg-apple-gray-50"
+                        } transition flex items-center gap-3 min-w-[220px]"
+                        onclick="setActiveDocument(${idx})">
+                        <div class="text-left flex-1">
+                            <p class="text-sm font-semibold line-clamp-1">Dokumen ${idx + 1}</p>
+                            <p class="text-xs opacity-80 line-clamp-1">${doc.filename}</p>
+                        </div>
+                        <div class="flex flex-col items-end gap-1">
+                            <span class="text-xs font-semibold">${matchedCount} SKU</span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusClass}">${statusLabel}</span>
+                        </div>
+                    </button>
+                `;
+            })
+            .join("");
+    }
+
+    function renderActiveDocument() {
+        const container = document.getElementById("document-detail");
+        if (!processedDocuments.length) {
+            container.innerHTML = "";
+            return;
+        }
+
+        const doc = processedDocuments[activeDocIndex];
+        const matchedHtml = doc.matched_products.length
+            ? doc.matched_products
+                  .map((item, idx) => renderMatchedProductCard(activeDocIndex, idx, item))
+                  .join("")
+            : '<p class="text-sm text-apple-gray-500">Belum ada SKU yang cocok.</p>';
+
+        const unmatchedHtml = doc.unmatched_products.length
+            ? doc.unmatched_products
+                  .map((item, idx) => renderUnmatchedProductCard(activeDocIndex, idx, item))
+                  .join("")
+            : '<p class="text-sm text-apple-gray-500">Tidak ada produk yang perlu ditinjau.</p>';
+
+        const errorsHtml = doc.errors.length
+            ? `<div class="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-apple text-sm">
+                    ${doc.errors.join("<br>")}
+               </div>`
+            : "";
+
+        container.innerHTML = `
+            ${errorsHtml}
+            <div class="grid gap-6 lg:grid-cols-[2fr_1fr]">
+                <div class="space-y-6">
+                    <section class="card-apple p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-apple-gray-900">Produk Cocok (${doc.matched_products.length})</h3>
+                            <span class="text-xs text-apple-gray-500">Total otomatis dari AI</span>
+                        </div>
+                        <div class="space-y-4">
+                            ${matchedHtml}
+                        </div>
+                    </section>
+                    <section class="card-apple p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-apple-gray-900">Perlu Review (${doc.unmatched_products.length})</h3>
+                            <button type="button" class="text-xs text-apple-blue font-semibold" onclick="addManualSku(${activeDocIndex})">
+                                + Tambah SKU Manual
+                            </button>
+                        </div>
+                        <div class="space-y-4">
+                            ${unmatchedHtml}
+                        </div>
+                    </section>
+                </div>
+                ${renderDocumentPreview(doc)}
+            </div>
+        `;
+    }
+
+    function renderMatchedProductCard(docIndex, itemIndex, item) {
+        const confidence = Math.round((item.avg_confidence || 0) * 100);
+        const badgeClass = confidence >= 70
+            ? "bg-green-100 text-green-700"
+            : "bg-yellow-100 text-yellow-700";
+
+        const entriesHtml = (item.entries || [])
+            .map(
+                (entry) => `
+                    <li class="text-xs text-apple-gray-600">
+                        • ${entry.name || "Tidak diketahui"} → ${entry.qty || 0} unit
+                        (${Math.round((entry.conf || 0) * 100)}%)
+                    </li>
+                `,
+            )
+            .join("");
+
+        return `
+            <div class="border border-apple-gray-200 rounded-apple p-4">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="font-semibold text-apple-gray-900">${item.sku || "SKU Tidak Dikenal"}</p>
+                        <p class="text-sm text-apple-gray-600">${item.master_name || "Nama master tidak tersedia"}</p>
+                        <p class="text-xs text-apple-gray-500">${item.count || 1} baris digabung</p>
+                    </div>
+                    <div class="flex flex-col items-end gap-2">
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold ${badgeClass}">
+                            ${confidence}%
+                        </span>
+                        <button type="button" class="text-xs text-red-600" onclick="removeMatchedProduct(${docIndex}, ${itemIndex})">
+                            Hapus
+                        </button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3 mt-4">
+                    <label class="text-xs font-semibold text-apple-gray-600">
+                        Total Terjual
+                        <input type="number" min="0"
+                            class="input-apple mt-1"
+                            value="${item.total_qty || 0}"
+                            onchange="updateMatchedQty(${docIndex}, ${itemIndex}, this.value)">
+                    </label>
+                    <div>
+                        <p class="text-xs font-semibold text-apple-gray-600">Rata-rata Akurasi</p>
+                        <p class="text-sm text-apple-gray-800 mt-1">${confidence}%</p>
+                    </div>
+                </div>
+                ${entriesHtml
+                    ? `<details class="mt-4">
+                        <summary class="text-xs text-apple-blue cursor-pointer">Lihat detail baris</summary>
+                        <ul class="mt-2 space-y-1">${entriesHtml}</ul>
+                    </details>`
+                    : ""}
+            </div>
+        `;
+    }
+
+    function renderUnmatchedProductCard(docIndex, itemIndex, item) {
+        const suggestions = item.suggestions || [];
+        const options = suggestions
+            .slice(0, 5)
+            .map(([name, sku, score]) => {
+                const percentage = Math.round((score || 0) * 100);
+                const isSelected = item.selected_sku === sku ? "selected" : "";
+                return `<option value="${sku}" ${isSelected}>${sku} • ${percentage}% - ${name}</option>`;
+            })
+            .join("");
+
+        return `
+            <div class="border border-apple-gray-200 rounded-apple p-4">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="w-full">
+                        <label class="text-xs font-semibold text-apple-gray-600">Nama Produk</label>
+                        <input type="text" class="input-apple mt-1" value="${item.product_name || ""}"
+                            onchange="updateUnmatchedField(${docIndex}, ${itemIndex}, 'product_name', this.value)">
+                    </div>
+                    <div class="w-24">
+                        <label class="text-xs font-semibold text-apple-gray-600">Qty</label>
+                        <input type="number" min="0" class="input-apple mt-1" value="${item.qty ?? ""}"
+                            onchange="updateUnmatchedField(${docIndex}, ${itemIndex}, 'qty', parseInt(this.value) || 0)">
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <label class="text-xs font-semibold text-apple-gray-600 mb-2 block">Pilih SKU</label>
+                    <select class="input-apple"
+                        onchange="assignManualSku(${docIndex}, ${itemIndex}, this.value)">
+                        <option value="">-- Pilih SKU --</option>
+                        ${options}
+                    </select>
+                </div>
+                ${item.selected_sku
+                    ? `<p class="text-xs text-green-600 mt-2">Akan disimpan sebagai ${item.selected_sku}</p>`
+                    : ""}
+                <button type="button" class="mt-3 text-xs text-red-600" onclick="removeUnmatchedProduct(${docIndex}, ${itemIndex})">
+                    Hapus baris ini
+                </button>
+            </div>
+        `;
+    }
+
+    function renderDocumentPreview(doc) {
+        const url = doc.document_url || doc.image_url;
+        let preview = `<div class="text-center text-apple-gray-400">
+            <svg class="w-16 h-16 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+            <p class="text-sm">Pratinjau tidak tersedia</p>
+        </div>`;
+
+        if (url) {
+            if (isPdfDocument(url, doc.mime_type)) {
+                preview = `
+                    <object data="${url}#toolbar=0"
+                        type="application/pdf"
+                        class="w-full h-[480px] border border-apple-gray-200 rounded-apple">
+                        <p>PDF tidak dapat ditampilkan. <a href="${url}" target="_blank" class="text-apple-blue underline">Unduh PDF</a></p>
+                    </object>
+                `;
+            } else {
+                preview = `
+                    <a href="${url}" target="_blank" class="block">
+                        <img src="${url}" alt="${doc.filename}"
+                            class="w-full rounded-apple shadow-apple-lg hover:shadow-apple-xl transition">
+                    </a>
+                `;
+            }
+        }
+
+        return `
+            <section class="card-apple p-5 h-full flex flex-col gap-4">
+                <div>
+                    <p class="text-xs text-apple-gray-500">Nama Dokumen</p>
+                    <p class="font-semibold text-apple-gray-900">${doc.filename}</p>
+                </div>
+                <div class="flex-1">${preview}</div>
+                ${url
+                    ? `<a href="${url}" target="_blank" class="text-sm text-apple-blue font-semibold hover:underline flex items-center gap-2">Lihat dokumen asli</a>`
+                    : ""}
+            </section>
+        `;
+    }
+
+    function isPdfDocument(url, mimeType) {
+        if (mimeType && mimeType.toLowerCase().includes("pdf")) {
+            return true;
+        }
+        return (url || "").toLowerCase().endsWith(".pdf");
+    }
+
+    function renderLegacyPreview() {
+        const container = document.getElementById("legacy-preview-container");
+        container.innerHTML = "";
+        processedResults.forEach((item, index) => {
+            const previewItem = createPreviewItem(item, index);
+            container.appendChild(previewItem);
+        });
+    }
+
+    function createPreviewItem(item, index) {
+        const wrapper = document.createElement("div");
+        wrapper.className =
+            "card-apple overflow-hidden border-2 " +
+            (item.needs_review
+                ? "border-yellow-400"
+                : "border-apple-gray-200") +
+            " fade-in";
+
+        const confidenceBadge =
+            item.confidence_score >= 0.7
+                ? `<span class="px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">Akurasi: ${(item.confidence_score * 100).toFixed(0)}%</span>`
+                : `<span class="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-semibold rounded-full">Akurasi Rendah: ${(item.confidence_score * 100).toFixed(0)}%</span>`;
+
+        wrapper.innerHTML = `
+            <div class="grid md:grid-cols-2 gap-6 p-6">
+                <!-- Data Section -->
+                <div>
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-semibold text-apple-gray-900">Data #${index + 1}</h3>
+                        ${confidenceBadge}
+                    </div>
+
+                    ${item.error ? `<div class="bg-red-50 text-red-700 px-4 py-3 rounded-apple mb-4 text-sm border border-red-200">${item.error}</div>` : ""}
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-apple-gray-700 mb-2">Kode SKU</label>
+                            <input type="text" class="input-apple"
+                                   value="${item.sku_code || ""}"
+                                   onchange="updateItem(${index}, 'sku_code', this.value)">
+                        </div>
+
+                        ${
+                            item.suggestions && item.suggestions.length > 0
+                                ? `
+                        <div class="bg-blue-50 p-4 rounded-apple border border-blue-200">
+                            <p class="text-xs font-semibold text-blue-900 mb-2">Saran SKU:</p>
+                            <div class="space-y-1">
+                                ${item.suggestions
+                                    .slice(0, 3)
+                                    .map(
+                                        (s) => `
+                                    <button type="button" class="block text-sm text-blue-700 hover:text-blue-900 hover:underline"
+                                            onclick="updateItem(${index}, 'sku_code', '${s[1]}'); updateItem(${index}, 'product_name', '${s[0]}'); this.parentElement.parentElement.classList.add('hidden');">
+                                        ${s[0]} (${s[1]}) - ${(s[2] * 100).toFixed(0)}%
+                                    </button>
+                                `,
+                                    )
+                                    .join("")}
+                            </div>
+                        </div>
+                        `
+                                : ""
+                        }
+
+                        <div>
+                            <label class="block text-xs font-semibold text-apple-gray-700 mb-2">Nama Produk</label>
+                            <input type="text" class="input-apple"
+                                   value="${item.product_name || ""}"
+                                   onchange="updateItem(${index}, 'product_name', this.value)">
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-apple-gray-700 mb-2">Stok Awal</label>
+                                <input type="number" class="input-apple text-center text-sm"
+                                       value="${item.stock_awal || ""}"
+                                       onchange="updateItem(${index}, 'stock_awal', parseInt(this.value) || null)">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-apple-gray-700 mb-2">Stok Akhir</label>
+                                <input type="number" class="input-apple text-center text-sm"
+                                       value="${item.stock_akhir || ""}"
+                                       onchange="updateItem(${index}, 'stock_akhir', parseInt(this.value) || null)">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-apple-gray-700 mb-2">Terjual <span class="text-red-500">*</span></label>
+                                <input type="number" class="input-apple text-center text-sm font-bold"
+                                       value="${item.stock_terjual || ""}"
+                                       onchange="updateItem(${index}, 'stock_terjual', parseInt(this.value) || null)"
+                                       required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Image Section -->
+                <div class="flex items-center justify-center bg-apple-gray-50 rounded-apple p-6">
+                    ${
+                        item.image_url
+                            ? `<a href="${item.image_url}" target="_blank" class="block">
+                            <img src="${item.image_url}" alt="Struk" class="max-h-80 rounded-apple shadow-apple-lg hover:shadow-apple-xl transition-shadow">
+                        </a>`
+                            : `<div class="text-center text-apple-gray-400">
+                            <svg class="w-20 h-20 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            <p class="text-sm">Gambar tidak tersedia</p>
+                        </div>`
+                    }
+                </div>
+            </div>
+        `;
+
+        return wrapper;
+    }
+
+    function updateItem(index, field, value) {
+        processedResults[index][field] = value;
+        updateSubmitCount();
+    }
+
+    function setActiveDocument(index) {
+        activeDocIndex = index;
+        renderDocumentTabs();
+        renderActiveDocument();
+    }
+
+    function updateMatchedQty(docIndex, matchedIndex, value) {
+        const qty = Math.max(0, parseInt(value, 10) || 0);
+        if (!processedDocuments[docIndex]) return;
+        processedDocuments[docIndex].matched_products[matchedIndex].total_qty = qty;
+        renderActiveDocument();
+        updateSubmitCount();
+    }
+
+    function addManualSku(docIndex) {
+        if (!processedDocuments[docIndex]) return;
+        processedDocuments[docIndex].unmatched_products.push({
+            product_name: "",
+            qty: 0,
+            confidence_score: 1,
+            suggestions: [],
+            selected_sku: "",
+            is_manual: true,
+        });
+        renderActiveDocument();
+        updateSubmitCount();
+    }
+
+    function removeMatchedProduct(docIndex, matchedIndex) {
+        if (!processedDocuments[docIndex]) return;
+        processedDocuments[docIndex].matched_products.splice(matchedIndex, 1);
+        renderActiveDocument();
+        updateSubmitCount();
+    }
+
+    function removeUnmatchedProduct(docIndex, unmatchedIndex) {
+        if (!processedDocuments[docIndex]) return;
+        processedDocuments[docIndex].unmatched_products.splice(unmatchedIndex, 1);
+        renderActiveDocument();
+        updateSubmitCount();
+    }
+
+    function updateUnmatchedField(docIndex, itemIndex, field, value) {
+        if (!processedDocuments[docIndex]) return;
+        processedDocuments[docIndex].unmatched_products[itemIndex][field] = value;
+        updateSubmitCount();
+    }
+
+    function assignManualSku(docIndex, unmatchedIndex, sku) {
+        if (!processedDocuments[docIndex]) return;
+        processedDocuments[docIndex].unmatched_products[unmatchedIndex].selected_sku = sku;
+        renderActiveDocument();
+        updateSubmitCount();
+    }
+
+    async function handleSubmitAll() {
+        const submitBtn = document.getElementById("submit-all-btn");
+        showLoading(submitBtn);
+
+        try {
+            const payload = {
+                asm_name: selectedASM,
+                store_name: selectedStore,
+                items: processedResults,
+            };
+
+            if (processedDocuments.length > 0) {
+                payload.documents = buildDocumentsPayload();
+            }
+
+            const response = await fetch("/api/ocr-submit", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                showToast(
+                    `Berhasil menyimpan ${result.count} data!`,
+                    "success",
+                );
+                setTimeout(() => (window.location.href = "/ocr"), 2000);
+            } else {
+                throw new Error(result.detail || "Gagal menyimpan");
+            }
+        } catch (error) {
+            console.error("Error:", error);
+            showToast("Gagal menyimpan data: " + error.message, "error");
+            hideLoading(submitBtn);
+        }
+    }
+
+    function buildDocumentsPayload() {
+        return processedDocuments.map((doc) => {
+            const manualMatches = (doc.unmatched_products || [])
+                .filter((item) => item.selected_sku)
+                .map((item) => ({
+                    sku: item.selected_sku,
+                    master_name: item.selected_sku,
+                    total_qty: item.qty || 0,
+                    count: 1,
+                    avg_confidence: item.confidence_score || 0,
+                    needs_review: false,
+                    entries: [
+                        {
+                            name: item.product_name,
+                            qty: item.qty,
+                            conf: item.confidence_score || 0,
+                            ocr_conf: item.confidence_score || 0,
+                        },
+                    ],
+                }));
+
+            const matched = (doc.matched_products || []).map((item) => ({
+                ...item,
+            }));
+
+            manualMatches.forEach((manual) => matched.push(manual));
+
+            return {
+                id: doc.id,
+                filename: doc.filename,
+                image_url: doc.image_url,
+                document_url: doc.document_url || doc.image_url,
+                mime_type: doc.mime_type,
+                matched_products: matched,
+                unmatched_products: (doc.unmatched_products || []).map((item) => ({
+                    product_name: item.product_name,
+                    qty: item.qty,
+                    confidence_score: item.confidence_score,
+                    suggestions: item.suggestions,
+                    selected_sku: item.selected_sku || null,
+                })),
+                errors: doc.errors || [],
+            };
+        });
+    }
+
+    function updateSubmitCount() {
+        const target = document.getElementById("submit-count");
+        if (processedDocuments.length > 0) {
+            let ready = 0;
+            processedDocuments.forEach((doc) => {
+                ready += doc.matched_products.filter(
+                    (item) => (item.total_qty || 0) > 0,
+                ).length;
+                ready += doc.unmatched_products.filter(
+                    (item) => !!item.selected_sku && (item.qty || 0) > 0,
+                ).length;
+            });
+            target.textContent = `${ready} SKU siap disimpan`;
+        } else if (processedResults.length > 0) {
+            const validCount = processedResults.filter(
+                (item) =>
+                    item.stock_terjual !== null &&
+                    item.stock_terjual !== undefined,
+            ).length;
+            target.textContent = `${validCount} data siap disimpan`;
+        } else {
+            target.textContent = "Tidak ada data siap disimpan";
+        }
+    }
+
+    window.setActiveDocument = setActiveDocument;
+    window.updateMatchedQty = updateMatchedQty;
+    window.assignManualSku = assignManualSku;
+    window.addManualSku = addManualSku;
+    window.removeMatchedProduct = removeMatchedProduct;
+    window.removeUnmatchedProduct = removeUnmatchedProduct;
+    window.updateUnmatchedField = updateUnmatchedField;
+</script>
+{% endblock %}

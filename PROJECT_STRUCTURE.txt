@@ -1,0 +1,72 @@
+pharmacy-stock-ocr/
+│
+├── Configuration Files
+│   ├── .env.example              # Environment variables template
+│   ├── .gitignore                # Git ignore rules
+│   ├── .dockerignore             # Docker ignore rules
+│   ├── pyproject.toml            # Python dependencies (uv)
+│   ├── Dockerfile                # Docker build configuration
+│   └── docker-compose.yml        # Docker Compose setup
+│
+├── Documentation
+│   ├── README.md                 # Main documentation
+│   ├── QUICKSTART.md             # Quick start guide
+│   ├── SHEETS_SETUP.md           # Google Sheets setup guide
+│   ├── PROJECT_STRUCTURE.txt     # This file
+│   └── initial-prompt.md         # Original specification
+│
+├── Scripts
+│   ├── setup.sh                  # Setup automation script
+│   └── verify_setup.py           # Configuration verification
+│
+├── Application
+│   ├── main.py                   # FastAPI application entry point
+│   │
+│   ├── models/                   # Data models
+│   │   ├── __init__.py
+│   │   └── schemas.py            # Pydantic models
+│   │
+│   ├── services/                 # Business logic services
+│   │   ├── __init__.py
+│   │   ├── database.py           # In-memory cache
+│   │   ├── sheets.py             # Google Sheets integration
+│   │   ├── gcs.py                # Google Cloud Storage
+│   │   ├── ocr.py                # Mistral + Claude OCR pipeline
+│   │   └── converter.py          # Product-SKU fuzzy matching
+│   │
+│   ├── templates/                # HTML templates (Jinja2)
+│   │   ├── base.html             # Base template with Tailwind + HTMX
+│   │   ├── home.html             # Landing page
+│   │   ├── manual_input.html     # Manual entry form
+│   │   └── ocr_input.html        # OCR bulk processing & preview
+│   │
+│   └── static/                   # Static files
+│       ├── css/                  # Custom CSS (optional)
+│       └── uploads/              # Temporary image uploads
+│           └── .gitkeep
+│
+└── Required Files (not in repo)
+    ├── .env                      # Your environment variables
+    └── credentials.json          # Google service account key
+
+Key Technologies:
+  Backend:     FastAPI, Python 3.11+, uvicorn
+  Frontend:    HTML, Tailwind CSS, HTMX, Tom-Select
+  AI/ML:       Mistral Pixtral-12B (OCR), Claude Sonnet 4 (extraction)
+  Storage:     Google Sheets (data), Google Cloud Storage (images)
+  Deployment:  Docker, Docker Compose
+
+API Endpoints:
+  GET  /                      Landing page
+  GET  /manual                Manual input form
+  GET  /ocr                   OCR bulk upload
+  GET  /api/stores            Get stores (filtered by area)
+  POST /api/manual-submit     Submit manual entry
+  POST /api/ocr-process       Process images with OCR
+  POST /api/ocr-submit        Submit OCR bulk entries
+  GET  /health                Health check
+
+Data Flow:
+  Manual:  User Form → Validation → Google Sheets
+  OCR:     Images → GCS Upload → Mistral OCR → Claude Extract → 
+           SKU Converter → Preview → User Edit → Google Sheets
