@@ -6,7 +6,7 @@ ENV UV_SYSTEM_PYTHON=1 \
     PIP_NO_CACHE_DIR=1
 
 COPY pyproject.toml uv.lock* ./
-RUN uv pip install --no-cache --target /install -r pyproject.toml
+RUN uv pip install --no-cache --target /install .
 
 COPY . .
 
@@ -16,13 +16,13 @@ WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONPATH=/app
+    PYTHONPATH=/app:/usr/local
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends tini \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /install /usr/local/lib/python3.11/site-packages
+COPY --from=builder /install /usr/local
 COPY --from=builder /app /app
 
 RUN useradd --create-home --uid 1000 appuser \
@@ -31,10 +31,10 @@ RUN useradd --create-home --uid 1000 appuser \
 
 USER appuser
 
-EXPOSE 8000
+EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+    CMD python -c "import os, urllib.request; urllib.request.urlopen('http://localhost:%s/health' % os.environ.get('PORT', '8080'))"
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["/bin/sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}"]

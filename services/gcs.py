@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Optional
 
+from google.auth import default as google_auth_default
 from google.api_core import exceptions as gcs_exceptions
 from google.cloud import storage
 from google.oauth2 import service_account
@@ -15,15 +16,19 @@ logger = logging.getLogger(__name__)
 class GCSUploader:
     """Upload images to Google Cloud Storage."""
 
-    def __init__(self, bucket_name: str, project_id: str, credentials_path: str):
+    def __init__(
+        self,
+        bucket_name: str,
+        project_id: str,
+        credentials_path: Optional[str] = None,
+    ):
         self.bucket_name = bucket_name
         self.project_id = project_id
 
         # Initialize GCS client
-        credentials = service_account.Credentials.from_service_account_file(
-            credentials_path
-        )
-        self.client = storage.Client(project=project_id, credentials=credentials)
+        credentials, resolved_project = self._load_credentials(credentials_path)
+        client_project = project_id or resolved_project
+        self.client = storage.Client(project=client_project, credentials=credentials)
         self.bucket = self.client.bucket(bucket_name)
         self._uniform_bucket_level_access = False
 
@@ -186,3 +191,15 @@ class GCSUploader:
         except Exception as e:
             logger.error(f"Error generating signed URL: {e}")
             return None
+
+    def _load_credentials(self, credentials_path: Optional[str]):
+        if credentials_path:
+            credentials = service_account.Credentials.from_service_account_file(
+                credentials_path
+            )
+            return credentials, getattr(credentials, "project_id", None)
+
+        credentials, project_id = google_auth_default()
+        if not credentials:
+            raise RuntimeError("Unable to determine Google Cloud credentials")
+        return credentials, project_id

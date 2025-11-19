@@ -94,8 +94,10 @@ Edit `.env` file:
 MISTRAL_API_KEY=your_mistral_api_key
 OPENAI_API_KEY=your_openai_api_key
 
-# Google Cloud
-GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json
+# Google Cloud (Local Development Only)
+# For local: use credentials.json file
+# For Cloud Run: leave unset, uses Application Default Credentials
+GOOGLE_APPLICATION_CREDENTIALS=credentials.json
 GCS_BUCKET_NAME=your-bucket-name
 GCS_PROJECT_ID=your-gcp-project-id
 
@@ -303,22 +305,16 @@ pytest
 
 ### Deploy to Google Cloud Run
 
-```bash
-# Build and push to Google Container Registry
-gcloud builds submit --tag gcr.io/PROJECT_ID/pharmacy-stock-ocr
+For detailed deployment instructions including cost optimization and best practices, see [GCP_DEPLOYMENT.md](./GCP_DEPLOYMENT.md).
 
-# Deploy to Cloud Run
-gcloud run deploy pharmacy-stock-ocr \
-  --image gcr.io/PROJECT_ID/pharmacy-stock-ocr \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --set-env-vars MISTRAL_API_KEY=xxx,ANTHROPIC_API_KEY=xxx,...
+**Quick deployment** (after setup):
+
+```bash
+# Build and deploy
+./deploy.sh
 ```
 
-### Environment Variables for Production
-
-Ensure all environment variables are set in your production environment.
+The app automatically uses **Application Default Credentials** in Cloud Run - no credentials file needed! See GCP_DEPLOYMENT.md for authentication details.
 
 ## License
 

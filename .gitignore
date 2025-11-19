@@ -19,15 +19,25 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
 # Virtual environments
 venv/
 ENV/
 env/
 .venv
+env.bak/
+venv.bak/
 
 # Environment variables
 .env
+.env.local
+.env.*.local
+
+# Google Cloud credentials
+credentials.json
+*-key.json
+service-account*.json
 
 # IDE
 .vscode/
@@ -35,15 +45,29 @@ env/
 *.swp
 *.swo
 *~
+.project
+.pydevproject
+.settings/
 
 # OS
 .DS_Store
 Thumbs.db
+*.bak
 
 # Project specific
-credentials.json
 static/uploads/*
 !static/uploads/.gitkeep
 
 # Logs
 *.log
+logs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# Lock files (optional - uncomment if you want to ignore)
+# uv.lock

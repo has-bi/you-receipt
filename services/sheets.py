@@ -3,6 +3,7 @@
 import logging
 from typing import List, Optional
 
+from google.auth import default as google_auth_default
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -18,17 +19,29 @@ class GoogleSheetsService:
     SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
     def __init__(
-        self, credentials_path: str, master_sheet_id: str, output_sheet_id: str
+        self,
+        credentials_path: Optional[str],
+        master_sheet_id: str,
+        output_sheet_id: str,
     ):
         self.master_sheet_id = master_sheet_id
         self.output_sheet_id = output_sheet_id
 
         # Initialize Google Sheets API client
-        credentials = service_account.Credentials.from_service_account_file(
-            credentials_path, scopes=self.SCOPES
-        )
+        credentials = self._load_credentials(credentials_path)
         self.service = build("sheets", "v4", credentials=credentials)
         self.sheets = self.service.spreadsheets()
+
+    def _load_credentials(self, credentials_path: Optional[str]):
+        if credentials_path:
+            return service_account.Credentials.from_service_account_file(
+                credentials_path, scopes=self.SCOPES
+            )
+
+        credentials, _ = google_auth_default(scopes=self.SCOPES)
+        if not credentials:
+            raise RuntimeError("Unable to determine Google credentials")
+        return credentials
 
     async def get_asms(self) -> List[ASM]:
         """Read ASM data from 'ASM_Area' sheet."""

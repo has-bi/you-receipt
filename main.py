@@ -59,7 +59,13 @@ async def lifespan(app: FastAPI):
     logger.info("Starting pharmacy stock management system...")
 
     # Initialize services
-    credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "credentials.json")
+    credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    if credentials_path and not os.path.isfile(credentials_path):
+        logger.warning(
+            "Credentials file %s not found; falling back to default application credentials",
+            credentials_path,
+        )
+        credentials_path = None
     master_sheet_id = os.getenv("MASTER_SHEET_ID")
     output_sheet_id = os.getenv("OUTPUT_SHEET_ID")
 
