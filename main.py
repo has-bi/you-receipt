@@ -18,6 +18,7 @@ from models.schemas import ManualInputRequest, StockEntry
 from services import (
     GCSUploader,
     GoogleSheetsService,
+    K24OpenAIOCRService,
     MasterDataCache,
     MultiProductOCRService,
     ProductSKUConverter,
@@ -38,6 +39,7 @@ cache: Optional[MasterDataCache] = None
 sheets_service: Optional[GoogleSheetsService] = None
 gcs_uploader: Optional[GCSUploader] = None
 ocr_service: Optional[MultiProductOCRService] = None
+k24_ocr_service: Optional[K24OpenAIOCRService] = None
 sku_converter: Optional[ProductSKUConverter] = None
 sku_aggregator: Optional[SKUAggregator] = None
 
@@ -51,10 +53,272 @@ async def ensure_master_data_synced():
         sku_converter.update_mapping(cache.get_product_name_to_sku_mapping())
 
 
+def _get_ocr_service(workflow: str):
+    if workflow == "k24":
+        return k24_ocr_service
+    return ocr_service
+
+
+async def _process_receipt_images(
+    *,
+    asm,
+    asm_name: str,
+    store_name: str,
+    files: List[UploadFile],
+    workflow: str,
+):
+    """Shared OCR pipeline for both general and K24 flows."""
+
+    if not gcs_uploader:
+        raise HTTPException(status_code=503, detail="Image upload service unavailable")
+    if not sku_converter or not sku_aggregator:
+        raise HTTPException(status_code=503, detail="SKU services are not initialized")
+
+    service = _get_ocr_service(workflow)
+    if not service:
+        raise HTTPException(status_code=503, detail="OCR service is not configured")
+
+    preview_items: list[dict] = []
+    documents: list[dict] = []
+    max_size_mb = int(os.getenv("MAX_UPLOAD_SIZE_MB", "10"))
+    max_size_bytes = max_size_mb * 1024 * 1024
+    concurrency_limit = max(1, int(os.getenv("OCR_CONCURRENCY", "2")))
+    semaphore = asyncio.Semaphore(concurrency_limit)
+
+    def _parse_positive_int(value) -> int:
+        if value is None:
+            return 0
+        if isinstance(value, (int, float)):
+            return int(abs(value))
+        if isinstance(value, str):
+            cleaned = value.strip()
+            if not cleaned:
+                return 0
+            negative = cleaned.startswith("-")
+            normalized = cleaned.replace("-", "").replace(",", "")
+            try:
+                parsed = int(float(normalized))
+            except ValueError:
+                return 0
+            return abs(parsed) if negative else parsed
+        return 0
+
+    async def process_single_file(index: int, file: UploadFile):
+        document_id = str(uuid.uuid4())
+        original_filename = file.filename or f"Document {index}"
+        content_type = file.content_type or mimetypes.guess_type(original_filename)[0]
+
+        async with semaphore:
+            temp_path = None
+            try:
+                file_bytes = await file.read()
+                if len(file_bytes) > max_size_bytes:
+                    error_message = f"File exceeds {max_size_mb}MB size limit"
+                    return (
+                        [
+                            {
+                                "id": str(uuid.uuid4()),
+                                "document_id": document_id,
+                                "image_url": None,
+                                "sku_code": None,
+                                "product_name": None,
+                                "stock_awal": None,
+                                "stock_akhir": None,
+                                "stock_terjual": None,
+                                "confidence_score": 0.0,
+                                "needs_review": True,
+                                "error": error_message,
+                                "suggestions": [],
+                            }
+                        ],
+                        {
+                            "id": document_id,
+                            "filename": original_filename,
+                            "image_url": None,
+                            "document_url": None,
+                            "mime_type": content_type,
+                            "matched_products": [],
+                            "unmatched_products": [],
+                            "errors": [error_message],
+                        },
+                    )
+
+                temp_path = f"static/uploads/{uuid.uuid4().hex}_{file.filename or 'upload'}"
+                with open(temp_path, "wb") as f:
+                    f.write(file_bytes)
+
+                image_url = await gcs_uploader.upload_file(temp_path, original_filename)
+                ocr_results = await service.process_document(temp_path)
+                doc_summary = {}
+                if isinstance(ocr_results, dict) and "results" in ocr_results:
+                    doc_summary = ocr_results.get("summary") or {}
+                    ocr_payload = ocr_results["results"]
+                else:
+                    ocr_payload = ocr_results
+
+                if workflow == "k24":
+                    product_label = doc_summary.get("product_name") if doc_summary else None
+                    if not product_label and ocr_payload:
+                        first_entry = ocr_payload[0]
+                        product_label = getattr(first_entry, "product_name", None)
+                    qty = _parse_positive_int(
+                        (doc_summary or {}).get("calculated_total_sell_out")
+                        or (doc_summary or {}).get("llm_total_sell_out")
+                    )
+                    sell_out_count = (doc_summary or {}).get("sell_out_entry_count")
+                    if isinstance(sell_out_count, str) and sell_out_count.isdigit():
+                        sell_out_count = int(sell_out_count)
+                    elif not isinstance(sell_out_count, int):
+                        sell_out_count = 1
+
+                    sku_code, sku_confidence, suggestions = (None, 0.0, [])
+                    if product_label:
+                        sku_code, sku_confidence, suggestions = (
+                            sku_converter.convert_with_confidence(product_label)
+                        )
+
+                    matched_entry = {
+                        "sku": sku_code,
+                        "master_name": product_label,
+                        "total_qty": qty,
+                        "count": max(1, sell_out_count or 1),
+                        "avg_confidence": sku_confidence,
+                        "needs_review": not sku_code
+                        or sku_confidence < sku_aggregator.review_threshold,
+                        "entries": [
+                            {
+                                "name": product_label,
+                                "qty": qty,
+                                "conf": sku_confidence,
+                                "ocr_conf": 1.0,
+                            }
+                        ],
+                    }
+
+                    preview_payloads = [
+                        {
+                            "id": str(uuid.uuid4()),
+                            "document_id": document_id,
+                            "image_url": image_url,
+                            "sku_code": sku_code,
+                            "product_name": product_label,
+                            "stock_awal": None,
+                            "stock_akhir": None,
+                            "stock_terjual": qty,
+                            "confidence_score": sku_confidence,
+                            "needs_review": matched_entry["needs_review"],
+                            "error": None,
+                            "suggestions": suggestions,
+                        }
+                    ]
+
+                    document_payload = {
+                        "id": document_id,
+                        "filename": original_filename,
+                        "image_url": image_url,
+                        "document_url": image_url,
+                        "mime_type": content_type,
+                        "matched_products": [matched_entry],
+                        "unmatched_products": [],
+                        "errors": [],
+                        "k24_summary": doc_summary or None,
+                        "k24_suggestions": suggestions,
+                    }
+                else:
+                    aggregation = sku_aggregator.aggregate(ocr_payload, sku_converter)
+                    document_errors = [
+                        err for err in (res.error for res in ocr_payload) if err
+                    ]
+
+                    document_payload = {
+                        "id": document_id,
+                        "filename": original_filename,
+                        "image_url": image_url,
+                        "document_url": image_url,
+                        "mime_type": content_type,
+                        "matched_products": aggregation["matched"],
+                        "unmatched_products": aggregation["unmatched"],
+                        "errors": document_errors,
+                        "k24_summary": doc_summary or None,
+                    }
+
+                    preview_payloads = []
+                    for entry in aggregation["entries"]:
+                        preview_payloads.append(
+                            {
+                                "id": str(uuid.uuid4()),
+                                "document_id": document_id,
+                                "image_url": image_url,
+                                "sku_code": entry.get("sku_code"),
+                                "product_name": entry.get("product_name"),
+                                "stock_awal": None,
+                                "stock_akhir": None,
+                                "stock_terjual": entry.get("stock_terjual"),
+                                "confidence_score": entry.get("confidence_score", 0.0),
+                                "needs_review": entry.get("needs_review", True),
+                                "error": entry.get("error"),
+                                "suggestions": entry.get("suggestions", []),
+                            }
+                        )
+
+                return preview_payloads, document_payload
+            except Exception as exc:  # noqa: BLE001
+                logger.error(f"Error processing file {original_filename}: {exc}")
+                return (
+                    [
+                        {
+                            "id": str(uuid.uuid4()),
+                            "document_id": document_id,
+                            "image_url": None,
+                            "error": f"Processing failed: {str(exc)}",
+                            "needs_review": True,
+                            "sku_code": None,
+                            "product_name": None,
+                            "stock_awal": None,
+                            "stock_akhir": None,
+                            "stock_terjual": None,
+                            "confidence_score": 0.0,
+                            "suggestions": [],
+                        }
+                    ],
+                    {
+                        "id": document_id,
+                        "filename": original_filename,
+                        "image_url": None,
+                        "document_url": None,
+                        "mime_type": content_type,
+                        "matched_products": [],
+                        "unmatched_products": [],
+                        "errors": [f"Processing failed: {str(exc)}"],
+                    },
+                )
+            finally:
+                if temp_path and os.path.exists(temp_path):
+                    os.remove(temp_path)
+
+    tasks = [process_single_file(idx, file) for idx, file in enumerate(files, start=1)]
+    results = await asyncio.gather(*tasks)
+
+    for previews, document in results:
+        preview_items.extend(previews)
+        documents.append(document)
+
+    return {
+        "success": True,
+        "asm_name": asm_name,
+        "store_name": store_name,
+        "area": asm.area_code,
+        "workflow": workflow,
+        "results": preview_items,
+        "documents": documents,
+    }
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize services on startup and cleanup on shutdown."""
-    global cache, sheets_service, gcs_uploader, ocr_service, sku_converter, sku_aggregator
+    global cache, sheets_service, gcs_uploader, ocr_service, k24_ocr_service
+    global sku_converter, sku_aggregator
 
     logger.info("Starting pharmacy stock management system...")
 
@@ -111,6 +375,14 @@ async def lifespan(app: FastAPI):
         )
     else:
         logger.warning("OCR API keys not configured, OCR will fail")
+
+    if openai_key:
+        k24_ocr_service = K24OpenAIOCRService(
+            openai_api_key=openai_key,
+            review_threshold=confidence_warning,
+        )
+    else:
+        logger.warning("OpenAI API key not configured, K24 OCR will be unavailable")
 
     # SKU converter
     fuzzy_threshold = float(os.getenv("FUZZY_MATCH_THRESHOLD", "0.75"))
@@ -277,143 +549,38 @@ async def process_ocr_images(
 
     if not files:
         raise HTTPException(status_code=400, detail="No files uploaded")
+    return await _process_receipt_images(
+        asm=asm,
+        asm_name=asm_name,
+        store_name=store_name,
+        files=files,
+        workflow="general",
+    )
 
-    preview_items: list[dict] = []
-    documents: list[dict] = []
-    max_size_mb = int(os.getenv("MAX_UPLOAD_SIZE_MB", "10"))
-    max_size_bytes = max_size_mb * 1024 * 1024
-    concurrency_limit = max(1, int(os.getenv("OCR_CONCURRENCY", "2")))
-    semaphore = asyncio.Semaphore(concurrency_limit)
 
-    async def process_single_file(index: int, file: UploadFile):
-        document_id = str(uuid.uuid4())
-        original_filename = file.filename or f"Document {index}"
-        content_type = file.content_type or mimetypes.guess_type(original_filename)[0]
+@app.post("/api/k24/ocr-process")
+async def process_k24_ocr_images(
+    asm_name: str = Form(...),
+    store_name: str = Form(...),
+    files: List[UploadFile] = File(...),
+):
+    """Process K24 receipts directly with OpenAI vision."""
+    await ensure_master_data_synced()
 
-        async with semaphore:
-            temp_path = None
-            try:
-                file_bytes = await file.read()
-                if len(file_bytes) > max_size_bytes:
-                    error_message = f"File exceeds {max_size_mb}MB size limit"
-                    return (
-                        [
-                            {
-                                "id": str(uuid.uuid4()),
-                                "document_id": document_id,
-                                "image_url": None,
-                                "sku_code": None,
-                                "product_name": None,
-                                "stock_awal": None,
-                                "stock_akhir": None,
-                                "stock_terjual": None,
-                                "confidence_score": 0.0,
-                                "needs_review": True,
-                                "error": error_message,
-                                "suggestions": [],
-                            }
-                        ],
-                        {
-                            "id": document_id,
-                            "filename": original_filename,
-                            "image_url": None,
-                            "document_url": None,
-                            "mime_type": content_type,
-                            "matched_products": [],
-                            "unmatched_products": [],
-                            "errors": [error_message],
-                        },
-                    )
+    asm = cache.get_asm(asm_name)
+    if not asm:
+        raise HTTPException(status_code=400, detail="Invalid ASM name")
 
-                temp_path = f"static/uploads/{uuid.uuid4().hex}_{file.filename or 'upload'}"
-                with open(temp_path, "wb") as f:
-                    f.write(file_bytes)
+    if not files:
+        raise HTTPException(status_code=400, detail="No files uploaded")
 
-                image_url = await gcs_uploader.upload_file(temp_path, original_filename)
-                ocr_results = await ocr_service.process_document(temp_path)
-                aggregation = sku_aggregator.aggregate(ocr_results, sku_converter)
-                document_errors = [err for err in (res.error for res in ocr_results) if err]
-
-                document_payload = {
-                    "id": document_id,
-                    "filename": original_filename,
-                    "image_url": image_url,
-                    "document_url": image_url,
-                    "mime_type": content_type,
-                    "matched_products": aggregation["matched"],
-                    "unmatched_products": aggregation["unmatched"],
-                    "errors": document_errors,
-                }
-
-                preview_payloads = []
-                for entry in aggregation["entries"]:
-                    preview_payloads.append(
-                        {
-                            "id": str(uuid.uuid4()),
-                            "document_id": document_id,
-                            "image_url": image_url,
-                            "sku_code": entry.get("sku_code"),
-                            "product_name": entry.get("product_name"),
-                            "stock_awal": None,
-                            "stock_akhir": None,
-                            "stock_terjual": entry.get("stock_terjual"),
-                            "confidence_score": entry.get("confidence_score", 0.0),
-                            "needs_review": entry.get("needs_review", True),
-                            "error": entry.get("error"),
-                            "suggestions": entry.get("suggestions", []),
-                        }
-                    )
-
-                return preview_payloads, document_payload
-            except Exception as exc:  # noqa: BLE001
-                logger.error(f"Error processing file {original_filename}: {exc}")
-                return (
-                    [
-                        {
-                            "id": str(uuid.uuid4()),
-                            "document_id": document_id,
-                            "image_url": None,
-                            "error": f"Processing failed: {str(exc)}",
-                            "needs_review": True,
-                            "sku_code": None,
-                            "product_name": None,
-                            "stock_awal": None,
-                            "stock_akhir": None,
-                            "stock_terjual": None,
-                            "confidence_score": 0.0,
-                            "suggestions": [],
-                        }
-                    ],
-                    {
-                        "id": document_id,
-                        "filename": original_filename,
-                        "image_url": None,
-                        "document_url": None,
-                        "mime_type": content_type,
-                        "matched_products": [],
-                        "unmatched_products": [],
-                        "errors": [f"Processing failed: {str(exc)}"],
-                    },
-                )
-            finally:
-                if temp_path and os.path.exists(temp_path):
-                    os.remove(temp_path)
-
-    tasks = [process_single_file(idx, file) for idx, file in enumerate(files, start=1)]
-    results = await asyncio.gather(*tasks)
-
-    for previews, document in results:
-        preview_items.extend(previews)
-        documents.append(document)
-
-    return {
-        "success": True,
-        "asm_name": asm_name,
-        "store_name": store_name,
-        "area": asm.area_code,
-        "results": preview_items,
-        "documents": documents,
-    }
+    return await _process_receipt_images(
+        asm=asm,
+        asm_name=asm_name,
+        store_name=store_name,
+        files=files,
+        workflow="k24",
+    )
 
 
 @app.post("/api/ocr-submit")
@@ -426,6 +593,9 @@ async def submit_ocr_bulk(request: Request):
     store_name = data.get("store_name")
     documents_payload = data.get("documents")
     items = data.get("items", [])
+    workflow = "k24" if data.get("workflow") == "k24" else "general"
+
+    method_label = "ocr_k24" if workflow == "k24" else "ocr"
 
     # Validate ASM
     asm = cache.get_asm(asm_name)
@@ -454,7 +624,7 @@ async def submit_ocr_bulk(request: Request):
                         stock_akhir=None,
                         stock_terjual=qty,
                         link_foto=image_url,
-                        method="ocr",
+                        method=method_label,
                     )
                 )
     else:
@@ -491,7 +661,7 @@ async def submit_ocr_bulk(request: Request):
                     stock_akhir=None,
                     stock_terjual=payload["total"],
                     link_foto=payload.get("image_url"),
-                    method="ocr",
+                    method=method_label,
                 )
             )
 

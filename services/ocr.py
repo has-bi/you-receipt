@@ -1,10 +1,11 @@
 """OCR service using Mistral Document AI and OpenAI GPT-4 for structured extraction."""
 
+import base64
 import json
 import logging
 import mimetypes
 from pathlib import Path
-from typing import Any, List
+from typing import Any, List, Tuple
 
 import httpx
 from openai import OpenAI
@@ -93,27 +94,55 @@ MISTRAL_DOCUMENT_AI_MODEL = "mistral-ocr-latest"
 SUPPORTED_MIME_TYPES = {"image/png", "image/jpeg", "image/jpg", "application/pdf"}
 
 
-def _safe_parse_json_array(payload: str) -> list[Any]:
-    """Parse a string into a JSON array, stripping markdown fences if needed."""
+def _parse_json_payload(payload: str) -> Any:
+    """Parse model response text into JSON, stripping markdown fences if needed."""
+
     payload = payload.strip()
     if payload.startswith("```"):
         payload = payload.strip("`")
         newline = payload.find("\n")
         if newline != -1:
             payload = payload[newline + 1 :]
+
     try:
-        data = json.loads(payload)
+        return json.loads(payload)
     except json.JSONDecodeError:
         if payload and payload[0] != "[":
             start = payload.find("[")
             end = payload.rfind("]")
             if start != -1 and end != -1 and end > start:
                 payload = payload[start : end + 1]
-        data = json.loads(payload)
+        return json.loads(payload)
 
+
+def _safe_parse_json_array(payload: str) -> list[Any]:
+    """Parse a string into a JSON array, stripping markdown fences if needed."""
+
+    data = _parse_json_payload(payload)
     if isinstance(data, dict) and "products" in data:
         data = data["products"]
     return data
+
+
+def _coerce_int(value: Any) -> int | None:
+    """Convert strings/numbers into ints, handling commas/decimals."""
+
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, str):
+        cleaned = value.strip()
+        if not cleaned:
+            return None
+        negative = cleaned.startswith("-")
+        normalized = cleaned.replace("-", "").replace(",", "")
+        try:
+            as_int = int(float(normalized))
+        except ValueError:
+            return None
+        return -as_int if negative else as_int
+    return None
 
 
 class MultiProductOCRService:
@@ -391,10 +420,251 @@ OPENAI_PRODUCTS_SCHEMA = {
                         ],
                         "additionalProperties": False,
                     },
-                }
+                },
+                "summary": {
+                    "type": "object",
+                    "properties": {
+                        "total_sell_out": {"type": ["number", "string"]},
+                        "sell_out_entries": {"type": ["number", "string"]},
+                        "sell_out_rows": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "transaction": {"type": ["string", "null"]},
+                                    "transaction_no": {"type": ["string", "null"]},
+                                    "timestamp": {"type": ["string", "null"]},
+                                    "description": {"type": ["string", "null"]},
+                                    "stok_delta": {"type": ["string", "number"]},
+                                },
+                                "additionalProperties": True,
+                            },
+                        },
+                        "skipped_entries": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "description": {"type": "string"},
+                                    "reason": {"type": "string"},
+                                },
+                                "required": ["description", "reason"],
+                                "additionalProperties": False,
+                            },
+                        },
+                        "notes": {"type": "string"},
+                    },
+                    "additionalProperties": True,
+                },
             },
             "required": ["products"],
-            "additionalProperties": False,
+            "additionalProperties": True,
         },
     },
 }
+
+
+K24_OCR_VISION_PROMPT = (
+    "You are auditing an Apotek K-24 transaction history for a single SKU."
+    " Focus on the 'Stok +/- (PCS)' column."
+    "\nInstructions:\n"
+    "1. Read the SKU name that appears above the table and return it as product_name.\n"
+    "2. Identify every table row whose 'Stok +/- (PCS)' value is negative (has a '-' sign)."
+    "   Those rows represent sell-out events. Ignore rows without a minus sign.\n"
+    "3. For each sell-out row, capture the transaction number, timestamp, description,"
+    "   and the raw negative value (e.g. -1). Store them in summary.sell_out_rows.\n"
+    "4. Convert the negative values to positive quantities and sum them to produce"
+    "   summary.total_sell_out. Double-check the arithmetic.\n"
+    "5. Populate products with exactly ONE object describing this SKU and the"
+    "   total sell-out quantity (stock_terjual = total_sell_out).\n"
+    "6. Add summary.sell_out_entries for the number of negative rows processed,"
+    "   summary.skipped_entries for non-negative rows you ignored (with reasons),"
+    "   and summary.notes for any important observations."
+    "7. Respond with pure JSON only (no markdown)."
+)
+
+
+class K24OpenAIOCRService:
+    """OCR pipeline that uses OpenAI vision models directly on receipt images."""
+
+    def __init__(
+        self,
+        openai_api_key: str,
+        review_threshold: float = 0.7,
+        vision_model: str = "gpt-4o",
+        prompt: str | None = None,
+    ):
+        self.openai_client = OpenAI(api_key=openai_api_key)
+        self.review_threshold = review_threshold
+        self.vision_model = vision_model
+        self.prompt = prompt or K24_OCR_VISION_PROMPT
+
+    async def process_document(self, image_path: str) -> dict:
+        """Read a receipt image with OpenAI's vision model and return OCR results + summary."""
+
+        try:
+            data_url = self._encode_image(image_path)
+            response = self.openai_client.chat.completions.create(
+                model=self.vision_model,
+                temperature=0.1,
+                max_tokens=2048,
+                response_format=OPENAI_PRODUCTS_SCHEMA,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a vision OCR assistant focused on structured JSON output.",
+                    },
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": (
+                                    f"{self.prompt}\n"
+                                    "Return raw JSON only with product_name, stock_terjual, confidence_score."
+                                ),
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": data_url},
+                            },
+                        ],
+                    },
+                ],
+            )
+
+            response_text = _normalize_response_content(
+                response.choices[0].message.content
+            )
+            if not response_text:
+                raise ValueError("OpenAI vision response was empty")
+
+            results, summary = self._parse_products(response_text)
+            return {"results": results, "summary": summary}
+
+        except Exception as exc:  # pragma: no cover - defensive path
+            logger.error(f"K24 OpenAI OCR error: {exc}")
+            return {
+                "results": [
+                    OCRResult(
+                        product_name=None,
+                        stock_terjual=None,
+                        confidence_score=0.0,
+                        needs_review=True,
+                        error=f"K24 OCR processing failed: {exc}",
+                        raw_text="",
+                    )
+                ],
+                "summary": {
+                    "llm_total_sell_out": None,
+                    "calculated_total_sell_out": 0,
+                    "notes": f"K24 OCR processing failed: {exc}",
+                    "matches_llm_total": False,
+                },
+            }
+
+    def _encode_image(self, image_path: str) -> str:
+        image_file_path = Path(image_path)
+        if not image_file_path.is_file():
+            raise FileNotFoundError(f"Image not found at {image_file_path}")
+
+        mime_type, _ = mimetypes.guess_type(image_file_path.name)
+        if not mime_type:
+            mime_type = "image/jpeg"
+
+        if mime_type not in SUPPORTED_MIME_TYPES:
+            raise ValueError("Unsupported file type for OCR. Upload PDF, PNG, or JPG/JPEG")
+
+        encoded = base64.b64encode(image_file_path.read_bytes()).decode("utf-8")
+        return f"data:{mime_type};base64,{encoded}"
+
+    def _parse_products(self, payload: str) -> Tuple[List[OCRResult], dict]:
+        data = _parse_json_payload(payload)
+        if isinstance(data, dict):
+            raw_products = data.get("products", [])
+            summary = data.get("summary", {})
+        else:
+            raw_products = data if isinstance(data, list) else []
+            summary = {}
+
+        summary_product_name = summary.get("product_name")
+        if not summary_product_name and raw_products:
+            first_name = (
+                raw_products[0].get("product_name")
+                if isinstance(raw_products[0], dict)
+                else None
+            )
+            if first_name:
+                summary_product_name = first_name
+
+        results: List[OCRResult] = []
+        for item in raw_products:
+            if not isinstance(item, dict):
+                continue
+
+            item_name = item.get("product_name") or summary_product_name
+            stock_terjual = item.get("stock_terjual")
+            confidence_score = float(item.get("confidence_score", 0.0))
+
+            stock_value = _coerce_int(stock_terjual)
+            if isinstance(stock_value, int) and stock_value < 0:
+                stock_value = abs(stock_value)
+
+            results.append(
+                OCRResult(
+                    product_name=item_name,
+                    stock_terjual=stock_value,
+                    confidence_score=confidence_score,
+                    needs_review=confidence_score < self.review_threshold,
+                    raw_text="",
+                )
+            )
+
+        sell_out_rows = summary.get("sell_out_rows")
+        calculated_total = 0
+        if isinstance(sell_out_rows, list) and sell_out_rows:
+            for row in sell_out_rows:
+                if not isinstance(row, dict):
+                    continue
+                delta = _coerce_int(row.get("stok_delta"))
+                if delta is None:
+                    continue
+                calculated_total += abs(delta)
+        else:
+            calculated_total = sum(
+                int(result.stock_terjual or 0)
+                for result in results
+                if result.stock_terjual is not None
+            )
+
+        llm_total = _coerce_int(summary.get("total_sell_out"))
+        sell_out_entries = _coerce_int(summary.get("sell_out_entries"))
+
+        info = {
+            "product_name": summary_product_name or (results[0].product_name if results else None),
+            "llm_total_sell_out": llm_total,
+            "calculated_total_sell_out": calculated_total,
+            "matches_llm_total": llm_total is None or llm_total == calculated_total,
+            "sell_out_entry_count": (
+                len(sell_out_rows)
+                if isinstance(sell_out_rows, list)
+                else len(results)
+            ),
+            "llm_sell_out_entry_count": sell_out_entries,
+        }
+        skipped = summary.get("skipped_entries")
+        if isinstance(skipped, list) and skipped:
+            info["skipped_entries"] = skipped
+        if isinstance(sell_out_rows, list) and sell_out_rows:
+            info["sell_out_rows"] = sell_out_rows
+        if summary.get("notes"):
+            info["notes"] = summary["notes"]
+
+        if not info["matches_llm_total"]:
+            logger.warning(
+                "K24 OCR summary mismatch: LLM total %s vs calculated %s",
+                llm_total,
+                calculated_total,
+            )
+
+        return results, info

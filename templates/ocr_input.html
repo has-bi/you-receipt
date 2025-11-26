@@ -12,33 +12,116 @@ endblock %} {% block content %}
     <!-- Upload Section -->
     <div id="upload-section" class="card-apple p-8 mb-8 slide-up">
         <form id="ocr-form" class="space-y-8">
-            <!-- Step 1: ASM & Area -->
-            <section class="rounded-2xl border border-apple-gray-200 bg-white p-6 shadow-sm">
+            <!-- Step 0: Jenis Toko -->
+            <section
+                class="rounded-2xl border border-apple-gray-200 bg-white p-6 shadow-sm"
+            >
                 <div class="flex items-center gap-3 mb-4">
-                    <span class="inline-flex w-8 h-8 items-center justify-center rounded-full bg-apple-gray-900 text-white font-semibold">1</span>
+                    <span
+                        class="inline-flex w-8 h-8 items-center justify-center rounded-full bg-apple-gray-900 text-white font-semibold"
+                        >0</span
+                    >
                     <div>
-                        <p class="text-lg font-semibold text-apple-gray-900">Pilih ASM & Area</p>
-                        <p class="text-sm text-apple-gray-500">Area terisi otomatis setelah Anda memilih ASM</p>
+                        <p class="text-lg font-semibold text-apple-gray-900">
+                            Pilih Jenis Toko
+                        </p>
+                        <p class="text-sm text-apple-gray-500">
+                            Tentukan apakah struk berasal dari Apotek K24 atau
+                            toko lainnya
+                        </p>
+                    </div>
+                </div>
+                <div class="grid gap-4 md:grid-cols-2">
+                    <button
+                        type="button"
+                        data-workflow-option="general"
+                        class="workflow-option text-left border-2 border-apple-gray-200 rounded-2xl px-5 py-4 hover:border-apple-gray-400 transition"
+                    >
+                        <h3
+                            class="text-xl font-semibold text-apple-gray-900 mb-1"
+                        >
+                            Toko Non K24
+                        </h3>
+                        <p class="text-sm text-apple-gray-600">
+                            Gunakan pipeline OCR standar (Mistral + OpenAI)
+                            untuk semua toko selain Apotek K24.
+                        </p>
+                    </button>
+                    <button
+                        type="button"
+                        data-workflow-option="k24"
+                        class="workflow-option text-left border-2 border-apple-gray-200 rounded-2xl px-5 py-4 hover:border-apple-gray-400 transition"
+                    >
+                        <h3
+                            class="text-xl font-semibold text-apple-gray-900 mb-1"
+                        >
+                            Apotek K24
+                        </h3>
+                        <p class="text-sm text-apple-gray-600">
+                            Gunakan alur khusus yang langsung membaca gambar
+                            struk K24 menggunakan OpenAI Vision.
+                        </p>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Step 1: ASM & Area -->
+            <section
+                class="rounded-2xl border border-apple-gray-200 bg-white p-6 shadow-sm"
+            >
+                <div class="flex items-center gap-3 mb-4">
+                    <span
+                        class="inline-flex w-8 h-8 items-center justify-center rounded-full bg-apple-gray-900 text-white font-semibold"
+                        >1</span
+                    >
+                    <div>
+                        <p class="text-lg font-semibold text-apple-gray-900">
+                            Pilih ASM & Area
+                        </p>
+                        <p class="text-sm text-apple-gray-500">
+                            Area terisi otomatis setelah Anda memilih ASM
+                        </p>
                     </div>
                 </div>
                 <div class="grid gap-6 md:grid-cols-2">
                     <div>
-                        <label for="asm-select" class="block text-sm font-semibold text-apple-gray-900 mb-2">
-                            ASM (Area Sales Manager) <span class="text-red-500">*</span>
+                        <label
+                            for="asm-select"
+                            class="block text-sm font-semibold text-apple-gray-900 mb-2"
+                        >
+                            ASM (Area Sales Manager)
+                            <span class="text-red-500">*</span>
                         </label>
-                        <select id="asm-select" name="asm_name" required class="input-apple">
+                        <select
+                            id="asm-select"
+                            name="asm_name"
+                            required
+                            class="input-apple"
+                        >
                             <option value="">Pilih ASM</option>
                             {% for asm in asms %}
-                            <option value="{{ asm.name }}" data-area="{{ asm.area_code }}" data-area-name="{{ asm.area_name }}">
+                            <option
+                                value="{{ asm.name }}"
+                                data-area="{{ asm.area_code }}"
+                                data-area-name="{{ asm.area_name }}"
+                            >
                                 {{ asm.name }} ({{ asm.area_name }})
                             </option>
                             {% endfor %}
                         </select>
-                        <p class="text-xs text-apple-gray-500 mt-2">Gunakan kolom pencarian jika daftar ASM panjang</p>
+                        <p class="text-xs text-apple-gray-500 mt-2">
+                            Gunakan kolom pencarian jika daftar ASM panjang
+                        </p>
                     </div>
                     <div>
-                        <label for="area" class="block text-sm font-semibold text-apple-gray-900 mb-2">
-                            Area <span class="text-xs text-apple-gray-500">(terisi otomatis)</span>
+                        <label
+                            for="area"
+                            class="block text-sm font-semibold text-apple-gray-900 mb-2"
+                        >
+                            Area
+                            <span class="text-xs text-apple-gray-500"
+                                >(terisi otomatis)</span
+                            >
                         </label>
                         <input
                             type="text"
@@ -47,21 +130,35 @@ endblock %} {% block content %}
                             class="input-apple bg-apple-gray-50 text-apple-gray-600 cursor-not-allowed"
                             placeholder="Pilih ASM terlebih dahulu"
                         />
-                        <p class="text-xs text-apple-gray-500 mt-2">Kolom ini terkunci agar tidak terjadi salah area</p>
+                        <p class="text-xs text-apple-gray-500 mt-2">
+                            Kolom ini terkunci agar tidak terjadi salah area
+                        </p>
                     </div>
                 </div>
             </section>
 
             <!-- Step 2: Info Toko -->
-            <section class="rounded-2xl border border-apple-gray-200 bg-white p-6 shadow-sm">
+            <section
+                class="rounded-2xl border border-apple-gray-200 bg-white p-6 shadow-sm"
+            >
                 <div class="flex items-center gap-3 mb-4">
-                    <span class="inline-flex w-8 h-8 items-center justify-center rounded-full bg-apple-gray-900 text-white font-semibold">2</span>
+                    <span
+                        class="inline-flex w-8 h-8 items-center justify-center rounded-full bg-apple-gray-900 text-white font-semibold"
+                        >2</span
+                    >
                     <div>
-                        <p class="text-lg font-semibold text-apple-gray-900">Isi Informasi Toko</p>
-                        <p class="text-sm text-apple-gray-500">Boleh mengetik manual jika toko belum ada di master</p>
+                        <p class="text-lg font-semibold text-apple-gray-900">
+                            Isi Informasi Toko
+                        </p>
+                        <p class="text-sm text-apple-gray-500">
+                            Boleh mengetik manual jika toko belum ada di master
+                        </p>
                     </div>
                 </div>
-                <label for="store_name" class="block text-sm font-semibold text-apple-gray-900 mb-2">
+                <label
+                    for="store_name"
+                    class="block text-sm font-semibold text-apple-gray-900 mb-2"
+                >
                     Nama Toko <span class="text-red-500">*</span>
                 </label>
                 <input
@@ -72,41 +169,106 @@ endblock %} {% block content %}
                     class="input-apple"
                     placeholder="Contoh: Apotek Sehat Jaya"
                 />
-                <p class="text-xs text-apple-gray-500 mt-2">Cantumkan nama toko sesuai foto struk agar mudah ditelusuri</p>
+                <p class="text-xs text-apple-gray-500 mt-2">
+                    Cantumkan nama toko sesuai foto struk agar mudah ditelusuri
+                </p>
             </section>
 
             <!-- Step 3: Upload Struk -->
-            <section class="rounded-2xl border border-apple-gray-200 bg-white p-6 shadow-sm">
+            <section
+                class="rounded-2xl border border-apple-gray-200 bg-white p-6 shadow-sm"
+            >
                 <div class="flex items-center gap-3 mb-4">
-                    <span class="inline-flex w-8 h-8 items-center justify-center rounded-full bg-apple-gray-900 text-white font-semibold">3</span>
+                    <span
+                        class="inline-flex w-8 h-8 items-center justify-center rounded-full bg-apple-gray-900 text-white font-semibold"
+                        >3</span
+                    >
                     <div>
-                        <p class="text-lg font-semibold text-apple-gray-900">Upload Foto / PDF Struk</p>
-                        <p class="text-sm text-apple-gray-500">Maksimal 10MB per file. Format: JPG, PNG, atau PDF.</p>
+                        <p class="text-lg font-semibold text-apple-gray-900">
+                            Upload Foto / PDF Struk
+                        </p>
+                        <p
+                            class="text-sm text-apple-gray-500"
+                            id="workflow-mode-label"
+                        >
+                            Mode Toko Non K24 (standar)
+                        </p>
                     </div>
                 </div>
-                <div class="mb-4 rounded-2xl border-2 border-dashed border-apple-gray-300 bg-apple-gray-50 p-8 text-center hover:border-apple-gray-500 transition">
-                    <input type="file" id="files" name="files" multiple accept="image/png,image/jpeg,application/pdf" required class="hidden" />
+                <div
+                    class="mb-4 rounded-2xl border-2 border-dashed border-apple-gray-300 bg-apple-gray-50 p-8 text-center hover:border-apple-gray-500 transition"
+                >
+                    <input
+                        type="file"
+                        id="files"
+                        name="files"
+                        multiple
+                        accept="image/png,image/jpeg,application/pdf"
+                        required
+                        class="hidden"
+                    />
                     <label for="files" class="cursor-pointer block">
-                        <svg class="w-16 h-16 mx-auto text-apple-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        <svg
+                            class="w-16 h-16 mx-auto text-apple-gray-400 mb-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                            ></path>
                         </svg>
-                        <p class="text-apple-gray-800 font-semibold mb-1">Klik untuk memilih file</p>
-                        <p class="text-sm text-apple-gray-500">atau seret & letakkan file ke area ini</p>
-                        <p class="text-xs text-apple-gray-400 mt-2">Format didukung: JPG, PNG, PDF • Maks 10MB per file</p>
+                        <p class="text-apple-gray-800 font-semibold mb-1">
+                            Klik untuk memilih file
+                        </p>
+                        <p class="text-sm text-apple-gray-500">
+                            atau seret & letakkan file ke area ini
+                        </p>
+                        <p class="text-xs text-apple-gray-400 mt-2">
+                            Format didukung: JPG, PNG, PDF • Maks 10MB per file
+                        </p>
                     </label>
                 </div>
                 <div id="file-list" class="space-y-2"></div>
+                <div
+                    id="k24-note"
+                    class="hidden mt-4 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800"
+                >
+                    Mode K24 langsung membaca gambar menggunakan OpenAI Vision.
+                    Pastikan foto struk tajam dan tidak terpotong agar hasil
+                    optimal.
+                </div>
             </section>
 
-            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div
+                class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
+            >
                 <p class="text-sm text-apple-gray-500">
-                    Pastikan cahaya foto cukup dan teks pada struk terlihat jelas untuk hasil terbaik
+                    Pastikan cahaya foto cukup dan teks pada struk terlihat
+                    jelas untuk hasil terbaik
                 </p>
-                <button type="submit" id="process-btn" class="rounded-xl border border-apple-gray-900 bg-apple-gray-900 px-6 py-3 text-white font-semibold shadow hover:bg-apple-gray-800 transition flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                <button
+                    type="submit"
+                    id="process-btn"
+                    class="rounded-xl border border-apple-gray-900 bg-apple-gray-900 px-6 py-3 text-white font-semibold shadow hover:bg-apple-gray-800 transition flex items-center justify-center gap-2"
+                >
+                    <svg
+                        class="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M13 10V3L4 14h7v7l9-11h-7z"
+                        ></path>
                     </svg>
-                    Proses dengan AI
+                    <span id="process-label">Proses dengan AI</span>
                 </button>
             </div>
         </form>
@@ -148,13 +310,28 @@ endblock %} {% block content %}
 
     <!-- Preview Section -->
     <div id="preview-section" class="hidden">
-        <section class="mb-6 rounded-2xl border border-apple-gray-200 bg-white p-6 shadow-sm">
-            <h2 class="text-2xl font-bold text-apple-gray-900 mb-2">
-                Review & Edit Data
-            </h2>
-            <p class="text-apple-gray-600 text-sm">
-                Periksa data hasil ekstraksi AI. Sesuaikan bila diperlukan sebelum disimpan.
-            </p>
+        <section
+            class="mb-6 rounded-2xl border border-apple-gray-200 bg-white p-6 shadow-sm"
+        >
+            <div
+                class="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+            >
+                <div>
+                    <h2 class="text-2xl font-bold text-apple-gray-900 mb-1">
+                        Review & Edit Data
+                    </h2>
+                    <p class="text-apple-gray-600 text-sm">
+                        Periksa data hasil ekstraksi AI. Sesuaikan bila
+                        diperlukan sebelum disimpan.
+                    </p>
+                </div>
+                <span
+                    id="workflow-mode-chip"
+                    class="inline-flex items-center gap-2 rounded-full bg-apple-gray-100 px-4 py-1 text-sm font-semibold text-apple-gray-700"
+                >
+                    Mode Toko Non K24
+                </span>
+            </div>
         </section>
 
         <!-- Document Tabs -->
@@ -198,12 +375,21 @@ endblock %} {% block content %}
     let selectedASM = null;
     let selectedStore = null;
     let selectedArea = null;
+    let selectedWorkflow = "general";
 
     document.addEventListener("DOMContentLoaded", function () {
         asmSelect = new TomSelect("#asm-select", {
             create: false,
             onChange: handleASMChange,
         });
+
+        document
+            .querySelectorAll("[data-workflow-option]")
+            .forEach((button) => {
+                button.addEventListener("click", () =>
+                    setWorkflow(button.dataset.workflowOption || "general"),
+                );
+            });
 
         document
             .getElementById("files")
@@ -214,6 +400,8 @@ endblock %} {% block content %}
         document
             .getElementById("submit-all-btn")
             .addEventListener("click", handleSubmitAll);
+
+        setWorkflow("general");
     });
 
     function handleASMChange(value) {
@@ -231,6 +419,73 @@ endblock %} {% block content %}
         document.getElementById("area").value = `${areaCode} - ${areaName}`;
         selectedASM = value;
         selectedArea = areaCode;
+    }
+
+    function setWorkflow(workflow) {
+        selectedWorkflow = workflow === "k24" ? "k24" : "general";
+        updateWorkflowUI();
+    }
+
+    function updateWorkflowUI() {
+        const modeLabel = document.getElementById("workflow-mode-label");
+        const processLabel = document.getElementById("process-label");
+        const k24Note = document.getElementById("k24-note");
+
+        if (modeLabel) {
+            modeLabel.textContent =
+                selectedWorkflow === "k24"
+                    ? "Mode Apotek K24 (OpenAI Vision)"
+                    : "Mode Toko Non K24 (standar)";
+        }
+
+        if (processLabel) {
+            processLabel.textContent =
+                selectedWorkflow === "k24"
+                    ? "Proses Mode K24"
+                    : "Proses dengan AI";
+        }
+
+        if (k24Note) {
+            if (selectedWorkflow === "k24") {
+                k24Note.classList.remove("hidden");
+            } else {
+                k24Note.classList.add("hidden");
+            }
+        }
+
+        updateWorkflowButtons();
+        updateWorkflowChip();
+    }
+
+    function updateWorkflowButtons() {
+        document.querySelectorAll(".workflow-option").forEach((button) => {
+            const isActive = button.dataset.workflowOption === selectedWorkflow;
+            button.classList.toggle("bg-apple-gray-100", isActive);
+            button.classList.toggle("border-apple-gray-900", isActive);
+            button.classList.toggle("shadow-apple-lg", isActive);
+            if (!isActive) {
+                button.classList.remove(
+                    "bg-apple-gray-100",
+                    "border-apple-gray-900",
+                    "shadow-apple-lg",
+                );
+                button.classList.add("bg-white", "border-apple-gray-200");
+            } else {
+                button.classList.remove("bg-white", "border-apple-gray-200");
+            }
+        });
+    }
+
+    function updateWorkflowChip() {
+        const chip = document.getElementById("workflow-mode-chip");
+        if (!chip) return;
+
+        const isK24 = selectedWorkflow === "k24";
+        chip.textContent = isK24 ? "Mode Apotek K24" : "Mode Toko Non K24";
+        chip.classList.toggle("bg-apple-gray-900", isK24);
+        chip.classList.toggle("text-white", isK24);
+        chip.classList.toggle("bg-apple-gray-100", !isK24);
+        chip.classList.toggle("text-apple-gray-700", !isK24);
     }
 
     function handleFileSelection(e) {
@@ -262,6 +517,7 @@ endblock %} {% block content %}
 
         const formData = new FormData(e.target);
         selectedStore = formData.get("store_name");
+        formData.append("workflow", selectedWorkflow);
 
         if (!selectedASM || !selectedStore) {
             showToast("Mohon lengkapi semua field yang wajib diisi", "error");
@@ -278,7 +534,11 @@ endblock %} {% block content %}
         document.getElementById("processing-status").classList.remove("hidden");
 
         try {
-            const response = await fetch("/api/ocr-process", {
+            const endpoint =
+                selectedWorkflow === "k24"
+                    ? "/api/k24/ocr-process"
+                    : "/api/ocr-process";
+            const response = await fetch(endpoint, {
                 method: "POST",
                 body: formData,
             });
@@ -286,6 +546,8 @@ endblock %} {% block content %}
             const result = await response.json();
 
             if (response.ok && result.success) {
+                selectedWorkflow = result.workflow || selectedWorkflow;
+                updateWorkflowUI();
                 processedResults = result.results || [];
                 const documents = (result.documents || []).map((doc, idx) =>
                     normalizeDocument(doc, idx),
@@ -325,11 +587,22 @@ endblock %} {% block content %}
         processedResults = results;
         processedDocuments = documents;
 
+        updateWorkflowChip();
+
         const tabs = document.getElementById("document-tabs");
         const detail = document.getElementById("document-detail");
         const legacyContainer = document.getElementById(
             "legacy-preview-container",
         );
+
+        if (selectedWorkflow === "k24") {
+            tabs.classList.add("hidden");
+            legacyContainer.classList.add("hidden");
+            detail.classList.remove("hidden");
+            renderK24Document();
+            updateSubmitCount();
+            return;
+        }
 
         if (processedDocuments.length > 0) {
             tabs.classList.remove("hidden");
@@ -360,6 +633,8 @@ endblock %} {% block content %}
                 selected_sku: item.selected_sku || "",
             })),
             errors: doc.errors || [],
+            k24_summary: doc.k24_summary || null,
+            k24_suggestions: doc.k24_suggestions || [],
         };
     }
 
@@ -375,13 +650,13 @@ endblock %} {% block content %}
                 const statusLabel = hasErrors
                     ? "Error"
                     : reviewCount > 0
-                    ? `${reviewCount} Review`
-                    : "Siap";
+                      ? `${reviewCount} Review`
+                      : "Siap";
                 const statusClass = hasErrors
                     ? "bg-red-100 text-red-700"
                     : reviewCount > 0
-                    ? "bg-yellow-100 text-yellow-700"
-                    : "bg-green-100 text-green-700";
+                      ? "bg-yellow-100 text-yellow-700"
+                      : "bg-green-100 text-green-700";
 
                 return `
                     <button type="button"
@@ -413,15 +688,24 @@ endblock %} {% block content %}
         }
 
         const doc = processedDocuments[activeDocIndex];
+        if (selectedWorkflow === "k24" || doc.k24_summary) {
+            renderK24Document();
+            return;
+        }
+
         const matchedHtml = doc.matched_products.length
             ? doc.matched_products
-                  .map((item, idx) => renderMatchedProductCard(activeDocIndex, idx, item))
+                  .map((item, idx) =>
+                      renderMatchedProductCard(activeDocIndex, idx, item),
+                  )
                   .join("")
             : '<p class="text-sm text-apple-gray-500">Belum ada SKU yang cocok.</p>';
 
         const unmatchedHtml = doc.unmatched_products.length
             ? doc.unmatched_products
-                  .map((item, idx) => renderUnmatchedProductCard(activeDocIndex, idx, item))
+                  .map((item, idx) =>
+                      renderUnmatchedProductCard(activeDocIndex, idx, item),
+                  )
                   .join("")
             : '<p class="text-sm text-apple-gray-500">Tidak ada produk yang perlu ditinjau.</p>';
 
@@ -430,9 +714,13 @@ endblock %} {% block content %}
                     ${doc.errors.join("<br>")}
                </div>`
             : "";
+        const summaryHtml = doc.k24_summary
+            ? renderK24Summary(doc.k24_summary)
+            : "";
 
         container.innerHTML = `
             ${errorsHtml}
+            ${summaryHtml}
             <div class="grid gap-6 lg:grid-cols-[2fr_1fr]">
                 <div class="space-y-6">
                     <section class="card-apple p-5">
@@ -461,11 +749,90 @@ endblock %} {% block content %}
         `;
     }
 
+    function renderK24Summary(summary) {
+        if (!summary || Object.keys(summary).length === 0) {
+            return "";
+        }
+        const llmTotal = summary.llm_total_sell_out;
+        const calcTotal = summary.calculated_total_sell_out;
+        const matches = summary.matches_llm_total !== false;
+        const badgeClass = matches
+            ? "bg-green-100 text-green-700"
+            : "bg-red-100 text-red-700";
+        const warningText = matches
+            ? ""
+            : `<p class="text-sm text-red-600 mt-2">Perbedaan terdeteksi antara total versi LLM dan perhitungan manual (${llmTotal ?? "N/A"} vs ${calcTotal ?? 0}). Mohon cek kembali.</p>`;
+
+        const skipped = (summary.skipped_entries || [])
+            .map(
+                (entry) => `
+                    <li class="text-xs text-apple-gray-600">
+                        ${entry.description || "Entry"} → ${entry.reason || "Diabaikan"}
+                    </li>
+                `,
+            )
+            .join("");
+
+        const skippedHtml = skipped
+            ? `<div class="mt-3">
+                    <p class="text-xs font-semibold text-apple-gray-600 mb-1">Baris yang diabaikan</p>
+                    <ul class="space-y-1">${skipped}</ul>
+                </div>`
+            : "";
+
+        const sellOutRows = (summary.sell_out_rows || [])
+            .map((row) => {
+                const desc = [
+                    row.transaction || row.transaction_no,
+                    row.timestamp,
+                ]
+                    .filter(Boolean)
+                    .join(" • ");
+                return `<li class="text-xs text-apple-gray-600">${desc || "Transaksi"} → ${row.stok_delta || "-"}</li>`;
+            })
+            .join("");
+
+        const rowsHtml = sellOutRows
+            ? `<div class="mt-3">
+                    <details class="text-xs">
+                        <summary class="cursor-pointer text-apple-blue font-semibold">Detail baris negatif</summary>
+                        <ul class="mt-2 space-y-1">${sellOutRows}</ul>
+                    </details>
+                </div>`
+            : "";
+
+        const notesHtml = summary.notes
+            ? `<p class="text-xs text-apple-gray-500 mt-2">${summary.notes}</p>`
+            : "";
+
+        return `
+            <div class="mb-4 card-apple p-4 border border-apple-gray-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-semibold text-apple-gray-600">Total Sell Out (Mode K24)</p>
+                        <p class="text-2xl font-bold text-apple-gray-900">${calcTotal ?? 0} PCS</p>
+                    </div>
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold ${badgeClass}">
+                        ${matches ? "Terverifikasi" : "Perlu cek ulang"}
+                    </span>
+                </div>
+                <p class="text-xs text-apple-gray-500 mt-1">
+                    LLM: ${llmTotal ?? "-"} • Jumlah baris terjual: ${summary.sell_out_entry_count ?? 0}
+                </p>
+                ${warningText}
+                ${skippedHtml}
+                ${rowsHtml}
+                ${notesHtml}
+            </div>
+        `;
+    }
+
     function renderMatchedProductCard(docIndex, itemIndex, item) {
         const confidence = Math.round((item.avg_confidence || 0) * 100);
-        const badgeClass = confidence >= 70
-            ? "bg-green-100 text-green-700"
-            : "bg-yellow-100 text-yellow-700";
+        const badgeClass =
+            confidence >= 70
+                ? "bg-green-100 text-green-700"
+                : "bg-yellow-100 text-yellow-700";
 
         const entriesHtml = (item.entries || [])
             .map(
@@ -508,12 +875,14 @@ endblock %} {% block content %}
                         <p class="text-sm text-apple-gray-800 mt-1">${confidence}%</p>
                     </div>
                 </div>
-                ${entriesHtml
-                    ? `<details class="mt-4">
+                ${
+                    entriesHtml
+                        ? `<details class="mt-4">
                         <summary class="text-xs text-apple-blue cursor-pointer">Lihat detail baris</summary>
                         <ul class="mt-2 space-y-1">${entriesHtml}</ul>
                     </details>`
-                    : ""}
+                        : ""
+                }
             </div>
         `;
     }
@@ -551,9 +920,11 @@ endblock %} {% block content %}
                         ${options}
                     </select>
                 </div>
-                ${item.selected_sku
-                    ? `<p class="text-xs text-green-600 mt-2">Akan disimpan sebagai ${item.selected_sku}</p>`
-                    : ""}
+                ${
+                    item.selected_sku
+                        ? `<p class="text-xs text-green-600 mt-2">Akan disimpan sebagai ${item.selected_sku}</p>`
+                        : ""
+                }
                 <button type="button" class="mt-3 text-xs text-red-600" onclick="removeUnmatchedProduct(${docIndex}, ${itemIndex})">
                     Hapus baris ini
                 </button>
@@ -596,11 +967,128 @@ endblock %} {% block content %}
                     <p class="font-semibold text-apple-gray-900">${doc.filename}</p>
                 </div>
                 <div class="flex-1">${preview}</div>
-                ${url
-                    ? `<a href="${url}" target="_blank" class="text-sm text-apple-blue font-semibold hover:underline flex items-center gap-2">Lihat dokumen asli</a>`
-                    : ""}
+                ${
+                    url
+                        ? `<a href="${url}" target="_blank" class="text-sm text-apple-blue font-semibold hover:underline flex items-center gap-2">Lihat dokumen asli</a>`
+                        : ""
+                }
             </section>
         `;
+    }
+
+    function getK24SummaryTotal(summary) {
+        if (!summary) return 0;
+        const value =
+            summary.calculated_total_sell_out ??
+            summary.llm_total_sell_out ??
+            0;
+        return Math.max(0, parseInt(value, 10) || 0);
+    }
+
+    function ensureK24Entry(doc) {
+        if (!doc.matched_products) {
+            doc.matched_products = [];
+        }
+        if (!doc.matched_products.length) {
+            doc.matched_products.push({
+                sku: "",
+                master_name: doc.k24_summary?.product_name || "",
+                total_qty: getK24SummaryTotal(doc.k24_summary),
+                count: 1,
+                avg_confidence: 0,
+                needs_review: true,
+            });
+        }
+        const entry = doc.matched_products[0];
+        if (doc.k24_summary) {
+            entry.master_name =
+                entry.master_name || doc.k24_summary.product_name || "";
+            entry.total_qty = getK24SummaryTotal(doc.k24_summary);
+        }
+        return entry;
+    }
+
+    function renderK24Document() {
+        const container = document.getElementById("document-detail");
+        if (!processedDocuments.length) {
+            container.innerHTML = "";
+            return;
+        }
+
+        const docIndex = Math.min(
+            activeDocIndex,
+            processedDocuments.length - 1,
+        );
+        const doc = processedDocuments[docIndex];
+        const summary = doc.k24_summary || {};
+        const entry = ensureK24Entry(doc);
+        const qty = entry.total_qty ?? getK24SummaryTotal(summary);
+        const suggestions = doc.k24_suggestions || [];
+        const suggestionHtml = suggestions.length
+            ? `
+                <div class="bg-blue-50 p-4 rounded-apple border border-blue-200 mt-4">
+                    <p class="text-xs font-semibold text-blue-900 mb-2">Saran SKU:</p>
+                    <div class="space-y-1">
+                        ${suggestions
+                            .slice(0, 3)
+                            .map(
+                                (s) => `
+                                    <button type="button" class="block text-sm text-blue-700 hover:text-blue-900 hover:underline"
+                                        onclick="updateK24Sku(${docIndex}, '${s[1]}');">
+                                        ${s[0]} (${s[1]}) - ${(s[2] * 100).toFixed(0)}%
+                                    </button>
+                                `,
+                            )
+                            .join("")}
+                    </div>
+                </div>
+            `
+            : "";
+
+        container.innerHTML = `
+            ${renderK24Summary(summary)}
+            <div class="grid gap-6 lg:grid-cols-[2fr_1fr]">
+                <section class="card-apple p-5">
+                    <h3 class="text-lg font-semibold text-apple-gray-900 mb-4">SKU Tunggal</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-apple-gray-700 mb-2">Nama Produk</label>
+                            <input type="text" class="input-apple" value="${entry.master_name || summary.product_name || ""}" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-apple-gray-700 mb-2">Kode SKU</label>
+                            <input type="text" class="input-apple"
+                                value="${entry.sku || ""}"
+                                onchange="updateK24Sku(${docIndex}, this.value)">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-apple-gray-700 mb-2">Jumlah Terjual (PCS)</label>
+                            <input type="number" min="0" class="input-apple font-semibold text-center"
+                                value="${qty || 0}"
+                                onchange="updateK24Qty(${docIndex}, this.value)">
+                        </div>
+                        ${suggestionHtml}
+                    </div>
+                </section>
+                ${renderDocumentPreview(doc)}
+            </div>
+        `;
+    }
+
+    function updateK24Sku(docIndex, value) {
+        if (!processedDocuments[docIndex]) return;
+        ensureK24Entry(processedDocuments[docIndex]).sku = value;
+        updateSubmitCount();
+    }
+
+    function updateK24Qty(docIndex, value) {
+        const qty = Math.max(0, parseInt(value, 10) || 0);
+        updateMatchedQty(docIndex, 0, qty);
+        const summary = processedDocuments[docIndex].k24_summary;
+        if (summary) {
+            summary.calculated_total_sell_out = qty;
+        }
+        renderK24Document();
     }
 
     function isPdfDocument(url, mimeType) {
@@ -741,7 +1229,8 @@ endblock %} {% block content %}
     function updateMatchedQty(docIndex, matchedIndex, value) {
         const qty = Math.max(0, parseInt(value, 10) || 0);
         if (!processedDocuments[docIndex]) return;
-        processedDocuments[docIndex].matched_products[matchedIndex].total_qty = qty;
+        processedDocuments[docIndex].matched_products[matchedIndex].total_qty =
+            qty;
         renderActiveDocument();
         updateSubmitCount();
     }
@@ -769,20 +1258,26 @@ endblock %} {% block content %}
 
     function removeUnmatchedProduct(docIndex, unmatchedIndex) {
         if (!processedDocuments[docIndex]) return;
-        processedDocuments[docIndex].unmatched_products.splice(unmatchedIndex, 1);
+        processedDocuments[docIndex].unmatched_products.splice(
+            unmatchedIndex,
+            1,
+        );
         renderActiveDocument();
         updateSubmitCount();
     }
 
     function updateUnmatchedField(docIndex, itemIndex, field, value) {
         if (!processedDocuments[docIndex]) return;
-        processedDocuments[docIndex].unmatched_products[itemIndex][field] = value;
+        processedDocuments[docIndex].unmatched_products[itemIndex][field] =
+            value;
         updateSubmitCount();
     }
 
     function assignManualSku(docIndex, unmatchedIndex, sku) {
         if (!processedDocuments[docIndex]) return;
-        processedDocuments[docIndex].unmatched_products[unmatchedIndex].selected_sku = sku;
+        processedDocuments[docIndex].unmatched_products[
+            unmatchedIndex
+        ].selected_sku = sku;
         renderActiveDocument();
         updateSubmitCount();
     }
@@ -796,6 +1291,7 @@ endblock %} {% block content %}
                 asm_name: selectedASM,
                 store_name: selectedStore,
                 items: processedResults,
+                workflow: selectedWorkflow,
             };
 
             if (processedDocuments.length > 0) {
@@ -860,14 +1356,17 @@ endblock %} {% block content %}
                 document_url: doc.document_url || doc.image_url,
                 mime_type: doc.mime_type,
                 matched_products: matched,
-                unmatched_products: (doc.unmatched_products || []).map((item) => ({
-                    product_name: item.product_name,
-                    qty: item.qty,
-                    confidence_score: item.confidence_score,
-                    suggestions: item.suggestions,
-                    selected_sku: item.selected_sku || null,
-                })),
+                unmatched_products: (doc.unmatched_products || []).map(
+                    (item) => ({
+                        product_name: item.product_name,
+                        qty: item.qty,
+                        confidence_score: item.confidence_score,
+                        suggestions: item.suggestions,
+                        selected_sku: item.selected_sku || null,
+                    }),
+                ),
                 errors: doc.errors || [],
+                k24_summary: doc.k24_summary || null,
             };
         });
     }
